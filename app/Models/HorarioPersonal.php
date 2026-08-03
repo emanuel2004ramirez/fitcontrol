@@ -1,0 +1,4 @@
+<?php
+namespace App\Models;
+use Illuminate\Database\Eloquent\Builder; use Illuminate\Database\Eloquent\Model; use Illuminate\Database\Eloquent\Relations\BelongsTo;
+class HorarioPersonal extends Model { protected $table='horarios_personal'; protected $fillable=['personal_id','dia_semana','hora_inicio','hora_fin','vigente_desde','vigente_hasta']; protected function casts(): array { return ['dia_semana'=>'integer','vigente_desde'=>'date','vigente_hasta'=>'date']; } public function scopeVigentes(Builder $query,$fecha=null): Builder { $fecha ??= today(); return $query->whereDate('vigente_desde','<=',$fecha)->where(fn($q)=>$q->whereNull('vigente_hasta')->orWhereDate('vigente_hasta','>=',$fecha)); } public function scopeDia(Builder $query,int $dia): Builder { return $query->where('dia_semana',$dia); } public function personal(): BelongsTo { return $this->belongsTo(Personal::class); } }

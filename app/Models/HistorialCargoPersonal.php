@@ -1,0 +1,4 @@
+<?php
+namespace App\Models;
+use Illuminate\Database\Eloquent\Builder; use Illuminate\Database\Eloquent\Model; use Illuminate\Database\Eloquent\Relations\BelongsTo;
+class HistorialCargoPersonal extends Model { protected $table='historial_cargos_personal'; protected $fillable=['personal_id','cargo_id','vigente_desde','vigente_hasta','motivo','registrado_por']; protected function casts(): array { return ['vigente_desde'=>'date','vigente_hasta'=>'date']; } public function scopeVigentes(Builder $query): Builder { return $query->whereNull('vigente_hasta'); } public function personal(): BelongsTo { return $this->belongsTo(Personal::class); } public function cargo(): BelongsTo { return $this->belongsTo(Cargo::class); } public function registradoPor(): BelongsTo { return $this->belongsTo(User::class,'registrado_por'); } }
