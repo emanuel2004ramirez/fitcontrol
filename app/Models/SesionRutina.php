@@ -1,4 +1,40 @@
 <?php
+
 namespace App\Models;
-use Illuminate\Database\Eloquent\Builder; use Illuminate\Database\Eloquent\Model; use Illuminate\Database\Eloquent\Relations\BelongsTo; use Illuminate\Database\Eloquent\Relations\HasMany;
-class SesionRutina extends Model { protected $table='sesiones_rutina'; protected $fillable=['version_rutina_id','numero_sesion','nombre','dia_semana','indicaciones']; protected function casts(): array { return ['numero_sesion'=>'integer','dia_semana'=>'integer']; } public function scopeOrdenadas(Builder $query): Builder { return $query->orderBy('numero_sesion'); } public function version(): BelongsTo { return $this->belongsTo(VersionRutina::class,'version_rutina_id'); } public function ejercicios(): HasMany { return $this->hasMany(EjercicioRutina::class); } public function entrenamientos(): HasMany { return $this->hasMany(EntrenamientoRealizado::class); } }
+
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class SesionRutina extends Model
+{
+    protected $table = 'sesiones_rutina';
+
+    protected $fillable = ['version_rutina_id', 'numero_sesion', 'nombre', 'dia_semana', 'indicaciones'];
+
+    protected function casts(): array
+    {
+        return ['numero_sesion' => 'integer', 'dia_semana' => 'integer'];
+    }
+
+    public function scopeOrdenadas(Builder $query): Builder
+    {
+        return $query->orderBy('numero_sesion');
+    }
+
+    public function version(): BelongsTo
+    {
+        return $this->belongsTo(VersionRutina::class, 'version_rutina_id');
+    }
+
+    public function ejercicios(): HasMany
+    {
+        return $this->hasMany(EjercicioRutina::class);
+    }
+
+    public function entrenamientos(): HasMany
+    {
+        return $this->hasMany(EntrenamientoRealizado::class);
+    }
+}

@@ -1,4 +1,86 @@
 <?php
+
 namespace App\Models;
-use Illuminate\Database\Eloquent\Builder; use Illuminate\Database\Eloquent\Model; use Illuminate\Database\Eloquent\Relations\BelongsTo; use Illuminate\Database\Eloquent\Relations\HasMany; use Illuminate\Database\Eloquent\SoftDeletes;
-class Membresia extends Model { use SoftDeletes; protected $fillable=['cliente_id','tipo_membresia_id','precio_membresia_id','estado_membresia_id','membresia_anterior_id','fecha_inicio','fecha_fin','precio_contratado','moneda','bloqueo_activa','origen','cancelada_at','motivo_cancelacion','creada_por','cancelada_por']; protected function casts(): array { return ['fecha_inicio'=>'date','fecha_fin'=>'date','precio_contratado'=>'decimal:2','bloqueo_activa'=>'integer','cancelada_at'=>'datetime']; } public function scopeActivas(Builder $query): Builder { return $query->where('bloqueo_activa',1); } public function scopeVigentesEn(Builder $query,$fecha): Builder { return $query->whereDate('fecha_inicio','<=',$fecha)->whereDate('fecha_fin','>=',$fecha); } public function cliente(): BelongsTo { return $this->belongsTo(Cliente::class); } public function tipo(): BelongsTo { return $this->belongsTo(TipoMembresia::class,'tipo_membresia_id'); } public function precio(): BelongsTo { return $this->belongsTo(PrecioMembresia::class,'precio_membresia_id'); } public function estado(): BelongsTo { return $this->belongsTo(EstadoMembresia::class,'estado_membresia_id'); } public function membresiaAnterior(): BelongsTo { return $this->belongsTo(self::class,'membresia_anterior_id'); } public function renovaciones(): HasMany { return $this->hasMany(self::class,'membresia_anterior_id'); } public function historialEstados(): HasMany { return $this->hasMany(HistorialEstadoMembresia::class); } public function suspensiones(): HasMany { return $this->hasMany(SuspensionMembresia::class); } public function cargosCobro(): HasMany { return $this->hasMany(CargoCobro::class); } public function asistencias(): HasMany { return $this->hasMany(Asistencia::class); } public function estaMarcadaActiva(): bool { return $this->bloqueo_activa===1; } }
+
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
+
+class Membresia extends Model
+{
+    use SoftDeletes;
+
+    protected $fillable = ['cliente_id', 'tipo_membresia_id', 'precio_membresia_id', 'estado_membresia_id', 'membresia_anterior_id', 'fecha_inicio', 'fecha_fin', 'precio_contratado', 'moneda', 'bloqueo_activa', 'origen', 'cancelada_at', 'motivo_cancelacion', 'creada_por', 'cancelada_por'];
+
+    protected function casts(): array
+    {
+        return ['fecha_inicio' => 'date', 'fecha_fin' => 'date', 'precio_contratado' => 'decimal:2', 'bloqueo_activa' => 'integer', 'cancelada_at' => 'datetime'];
+    }
+
+    public function scopeActivas(Builder $query): Builder
+    {
+        return $query->where('bloqueo_activa', 1);
+    }
+
+    public function scopeVigentesEn(Builder $query, $fecha): Builder
+    {
+        return $query->whereDate('fecha_inicio', '<=', $fecha)->whereDate('fecha_fin', '>=', $fecha);
+    }
+
+    public function cliente(): BelongsTo
+    {
+        return $this->belongsTo(Cliente::class);
+    }
+
+    public function tipo(): BelongsTo
+    {
+        return $this->belongsTo(TipoMembresia::class, 'tipo_membresia_id');
+    }
+
+    public function precio(): BelongsTo
+    {
+        return $this->belongsTo(PrecioMembresia::class, 'precio_membresia_id');
+    }
+
+    public function estado(): BelongsTo
+    {
+        return $this->belongsTo(EstadoMembresia::class, 'estado_membresia_id');
+    }
+
+    public function membresiaAnterior(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'membresia_anterior_id');
+    }
+
+    public function renovaciones(): HasMany
+    {
+        return $this->hasMany(self::class, 'membresia_anterior_id');
+    }
+
+    public function historialEstados(): HasMany
+    {
+        return $this->hasMany(HistorialEstadoMembresia::class);
+    }
+
+    public function suspensiones(): HasMany
+    {
+        return $this->hasMany(SuspensionMembresia::class);
+    }
+
+    public function cargosCobro(): HasMany
+    {
+        return $this->hasMany(CargoCobro::class);
+    }
+
+    public function asistencias(): HasMany
+    {
+        return $this->hasMany(Asistencia::class);
+    }
+
+    public function estaMarcadaActiva(): bool
+    {
+        return $this->bloqueo_activa === 1;
+    }
+}

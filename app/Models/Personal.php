@@ -1,4 +1,79 @@
 <?php
+
 namespace App\Models;
-use Illuminate\Database\Eloquent\Builder; use Illuminate\Database\Eloquent\Model; use Illuminate\Database\Eloquent\Relations\BelongsTo; use Illuminate\Database\Eloquent\Relations\HasMany; use Illuminate\Database\Eloquent\Relations\HasOne; use Illuminate\Database\Eloquent\SoftDeletes;
-class Personal extends Model { use SoftDeletes; protected $table='personal'; protected $fillable=['codigo_empleado','cargo_id','sexo_id','estado_personal_id','nombre','apellido','tipo_identificacion','numero_identificacion','telefono','correo_electronico','fecha_contratacion','fecha_terminacion','motivo_terminacion']; protected function casts(): array { return ['fecha_contratacion'=>'date','fecha_terminacion'=>'date']; } public function scopeBuscar(Builder $query,string $termino): Builder { return $query->where(fn($q)=>$q->where('codigo_empleado','like',"%{$termino}%")->orWhere('nombre','like',"%{$termino}%")->orWhere('apellido','like',"%{$termino}%")); } public function cargo(): BelongsTo { return $this->belongsTo(Cargo::class); } public function sexo(): BelongsTo { return $this->belongsTo(Sexo::class); } public function estado(): BelongsTo { return $this->belongsTo(EstadoPersonal::class,'estado_personal_id'); } public function usuario(): HasOne { return $this->hasOne(User::class); } public function historialCargos(): HasMany { return $this->hasMany(HistorialCargoPersonal::class); } public function historialEstados(): HasMany { return $this->hasMany(HistorialEstadoPersonal::class); } public function horarios(): HasMany { return $this->hasMany(HorarioPersonal::class); } public function rutinasAsignadas(): HasMany { return $this->hasMany(Rutina::class,'entrenador_id'); } public function evaluacionesRealizadas(): HasMany { return $this->hasMany(EvaluacionFisica::class,'evaluador_id'); } public function nombreCompleto(): string { return trim("{$this->nombre} {$this->apellido}"); } }
+
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\SoftDeletes;
+
+class Personal extends Model
+{
+    use SoftDeletes;
+
+    protected $table = 'personal';
+
+    protected $fillable = ['codigo_empleado', 'cargo_id', 'sexo_id', 'estado_personal_id', 'nombre', 'apellido', 'tipo_identificacion', 'numero_identificacion', 'telefono', 'correo_electronico', 'fecha_contratacion', 'fecha_terminacion', 'motivo_terminacion'];
+
+    protected function casts(): array
+    {
+        return ['fecha_contratacion' => 'date', 'fecha_terminacion' => 'date'];
+    }
+
+    public function scopeBuscar(Builder $query, string $termino): Builder
+    {
+        return $query->where(fn ($q) => $q->where('codigo_empleado', 'like', "%{$termino}%")->orWhere('nombre', 'like', "%{$termino}%")->orWhere('apellido', 'like', "%{$termino}%"));
+    }
+
+    public function cargo(): BelongsTo
+    {
+        return $this->belongsTo(Cargo::class);
+    }
+
+    public function sexo(): BelongsTo
+    {
+        return $this->belongsTo(Sexo::class);
+    }
+
+    public function estado(): BelongsTo
+    {
+        return $this->belongsTo(EstadoPersonal::class, 'estado_personal_id');
+    }
+
+    public function usuario(): HasOne
+    {
+        return $this->hasOne(User::class);
+    }
+
+    public function historialCargos(): HasMany
+    {
+        return $this->hasMany(HistorialCargoPersonal::class);
+    }
+
+    public function historialEstados(): HasMany
+    {
+        return $this->hasMany(HistorialEstadoPersonal::class);
+    }
+
+    public function horarios(): HasMany
+    {
+        return $this->hasMany(HorarioPersonal::class);
+    }
+
+    public function rutinasAsignadas(): HasMany
+    {
+        return $this->hasMany(Rutina::class, 'entrenador_id');
+    }
+
+    public function evaluacionesRealizadas(): HasMany
+    {
+        return $this->hasMany(EvaluacionFisica::class, 'evaluador_id');
+    }
+
+    public function nombreCompleto(): string
+    {
+        return trim("{$this->nombre} {$this->apellido}");
+    }
+}
