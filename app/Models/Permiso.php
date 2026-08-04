@@ -3,16 +3,24 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Spatie\Permission\Models\Permission;
 
-class Permiso extends Model
+class Permiso extends Permission
 {
-    protected $fillable = ['codigo', 'nombre', 'modulo', 'descripcion'];
+    protected $table = 'permisos';
+
+    protected $fillable = ['name', 'guard_name', 'codigo', 'nombre', 'modulo', 'descripcion'];
 
     protected function casts(): array
     {
         return [];
+    }
+
+    public function setCodigoAttribute(string $value): void
+    {
+        $this->attributes['codigo'] = $value;
+        $this->attributes['name'] = $this->attributes['name'] ?? $value;
     }
 
     public function scopeModulo(Builder $query, string $modulo): Builder
@@ -22,6 +30,6 @@ class Permiso extends Model
 
     public function roles(): BelongsToMany
     {
-        return $this->belongsToMany(Rol::class, 'permiso_rol')->withTimestamps();
+        return parent::roles()->withTimestamps();
     }
 }

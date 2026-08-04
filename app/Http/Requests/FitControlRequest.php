@@ -2,13 +2,20 @@
 
 namespace App\Http\Requests;
 
+use App\Support\Authorization\FitControlPermissions;
 use Illuminate\Foundation\Http\FormRequest;
 
 abstract class FitControlRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        $permission = FitControlPermissions::forRequest(static::class);
+
+        if ($permission === null) {
+            return true;
+        }
+
+        return $this->user()?->can($permission) ?? false;
     }
 
     public function messages(): array
