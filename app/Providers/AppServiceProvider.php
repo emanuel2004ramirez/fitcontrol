@@ -62,6 +62,7 @@ use App\Policies\PersonalPolicy;
 use App\Policies\RutinaPolicy;
 use App\Policies\UsuarioPolicy;
 use App\Support\Authorization\FitControlPermissions;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
@@ -80,6 +81,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Paginator::useBootstrapFive();
         Gate::before(fn (User $user) => $user->hasRole(FitControlPermissions::SUPER_ADMIN_ROLE) ? true : null);
 
         foreach (FitControlPermissions::all() as $permission) {

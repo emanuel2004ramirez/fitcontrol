@@ -33,6 +33,7 @@ use App\Http\Requests\Pago\CambiarEstadoPagoRequest;
 use App\Http\Requests\Pago\StoreCargoCobroRequest;
 use App\Http\Requests\Pago\StorePagoRequest;
 use App\Http\Requests\Pago\StoreReembolsoRequest;
+use App\Http\Requests\Personal\AsignarCargoPersonalRequest;
 use App\Http\Requests\Personal\CambiarEstadoPersonalRequest;
 use App\Http\Requests\Personal\DeletePersonalRequest;
 use App\Http\Requests\Personal\StoreHorarioPersonalRequest;
@@ -96,6 +97,7 @@ final class FitControlPermissions
         CambiarEstadoPersonalRequest::class => 'personal.changeStatus',
         DeletePersonalRequest::class => 'personal.delete',
         StoreHorarioPersonalRequest::class => 'personal.manage',
+        AsignarCargoPersonalRequest::class => 'personal.manage',
         StoreUsuarioRequest::class => 'usuarios.create',
         UpdateUsuarioRequest::class => 'usuarios.update',
         CambiarPasswordRequest::class => 'usuarios.manage',
