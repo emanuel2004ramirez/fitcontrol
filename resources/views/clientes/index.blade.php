@@ -1,0 +1,17 @@
+@extends('layouts.app')
+@section('title','Clientes')
+@php($permissions=session('permissions',[])) @php($can=static fn(string $p):bool=>in_array('*',$permissions,true)||in_array($p,$permissions,true))
+@php($breadcrumbs=[['label'=>'Clientes']])
+@section('content')
+<x-page-header title="Clientes" subtitle="Expedientes, salud, consentimientos y seguimiento de miembros.">@if($can('clientes.create'))<x-button :href="route('clientes.create')" icon="bi-person-plus">Nuevo cliente</x-button>@endif</x-page-header>
+<x-card title="Filtros" class="mb-4"><form method="GET" class="row g-3">
+<div class="col-lg-4"><label class="form-label">Buscar</label><input class="form-control" name="texto" value="{{ $filtros['texto']??'' }}" placeholder="Socio, nombre, identidad, teléfono o correo"></div>
+<div class="col-md-3 col-lg-2"><label class="form-label">Estado</label><select class="form-select" name="estado_id"><option value="">Todos</option>@foreach($estados as $e)<option value="{{ $e->id }}" @selected(($filtros['estado_id']??null)==$e->id)>{{ $e->nombre }}</option>@endforeach</select></div>
+<div class="col-md-3 col-lg-2"><label class="form-label">Sexo</label><select class="form-select" name="sexo_id"><option value="">Todos</option>@foreach($sexos as $s)<option value="{{ $s->id }}" @selected(($filtros['sexo_id']??null)==$s->id)>{{ $s->nombre }}</option>@endforeach</select></div>
+<div class="col-md-3 col-lg-2"><label class="form-label">Registro desde</label><input type="date" class="form-control" name="fecha_desde" value="{{ $filtros['fecha_desde']??'' }}"></div><div class="col-md-3 col-lg-2"><label class="form-label">Registro hasta</label><input type="date" class="form-control" name="fecha_hasta" value="{{ $filtros['fecha_hasta']??'' }}"></div>
+<div class="col-md-2"><label class="form-label">Por página</label><select class="form-select" name="por_pagina">@foreach([10,15,25,50,100] as $n)<option @selected(($filtros['por_pagina']??15)==$n)>{{ $n }}</option>@endforeach</select></div><div class="col d-flex align-items-end gap-2"><x-button type="submit" icon="bi-search">Filtrar</x-button><x-button :href="route('clientes.index')" variant="outline-secondary">Limpiar</x-button></div>
+</form></x-card>
+<x-card><div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead><tr><th>Cliente</th><th>Estado</th><th>Contacto</th><th>Registro</th><th class="text-end">Acciones</th></tr></thead><tbody>
+@forelse($clientes as $c)<tr><td><strong>{{ $c->nombre_completo }}</strong><div class="small text-muted">{{ $c->numero_socio }} @if($c->numero_identificacion)· {{ $c->numero_identificacion }}@endif</div></td><td><span class="badge text-bg-{{ strtolower($c->estado_codigo)==='activo'?'success':'secondary' }}">{{ $c->estado }}</span></td><td>{{ $c->telefono?:'—' }}<div class="small text-muted">{{ $c->correo_electronico?:'Sin correo' }}</div></td><td>{{ \Illuminate\Support\Carbon::parse($c->fecha_registro)->format('d/m/Y') }}</td><td class="text-end">@if($can('clientes.view'))<a class="btn btn-sm btn-outline-primary" href="{{ route('clientes.show',$c->id) }}"><i class="bi bi-eye"></i></a>@endif @if($can('clientes.update'))<a class="btn btn-sm btn-outline-secondary" href="{{ route('clientes.edit',$c->id) }}"><i class="bi bi-pencil"></i></a>@endif</td></tr>@empty<tr><td colspan="5" class="text-center text-muted py-5">No hay clientes que coincidan con los filtros.</td></tr>@endforelse
+</tbody></table></div>@if($clientes->hasPages())<div class="mt-4">{{ $clientes->links() }}</div>@endif</x-card>
+@endsection

@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use Illuminate\Pagination\LengthAwarePaginator;
+
 class ClienteService extends StoredProcedureService
 {
     public function listar(int $limite = 100, int $offset = 0): array
@@ -17,6 +19,35 @@ class ClienteService extends StoredProcedureService
     public function buscar(?string $texto = null, ?int $estadoId = null): array
     {
         return $this->select('sp_clientes_buscar', [$texto, $estadoId]);
+    }
+
+    public function paginar(array $filtros, int $porPagina, int $pagina): LengthAwarePaginator
+    {
+        $parametros = [$filtros['texto'] ?? null, $filtros['estado_id'] ?? null, $filtros['sexo_id'] ?? null, $filtros['fecha_desde'] ?? null, $filtros['fecha_hasta'] ?? null];
+        $total = (int) ($this->selectOne('sp_clientes_contar', $parametros)?->total ?? 0);
+        $resultados = $this->select('sp_clientes_filtrar', [...$parametros, $porPagina, ($pagina - 1) * $porPagina]);
+
+        return new LengthAwarePaginator($resultados, $total, $porPagina, $pagina, ['path' => LengthAwarePaginator::resolveCurrentPath(), 'query' => $filtros]);
+    }
+
+    public function contactosEmergencia(int $id): array
+    {
+        return $this->select('sp_clientes_contactos_emergencia', [$id]);
+    }
+
+    public function datosMedicos(int $id): ?object
+    {
+        return $this->selectOne('sp_clientes_datos_medicos', [$id]);
+    }
+
+    public function consentimientos(int $id): array
+    {
+        return $this->select('sp_clientes_consentimientos', [$id]);
+    }
+
+    public function historialEstados(int $id): array
+    {
+        return $this->select('sp_clientes_historial_estados', [$id]);
     }
 
     public function crear(array $data): ?object
@@ -44,9 +75,9 @@ class ClienteService extends StoredProcedureService
         return $this->selectOne('sp_contactos_emergencia_guardar', [$data['id'] ?? null, $data['cliente_id'], $data['nombre_completo'], $data['parentesco'], $data['telefono'], $data['es_principal'] ?? false]);
     }
 
-    public function eliminarContactoEmergencia(int $id): bool
+    public function eliminarContactoEmergencia(int $clienteId, int $id): bool
     {
-        return $this->statement('sp_contactos_emergencia_eliminar', [$id]);
+        return $this->statement('sp_contactos_emergencia_eliminar', [$clienteId, $id]);
     }
 
     public function registrarConsentimiento(array $data): bool

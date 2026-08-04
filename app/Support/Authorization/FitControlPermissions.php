@@ -5,6 +5,10 @@ namespace App\Support\Authorization;
 use App\Http\Requests\Asistencia\RegistrarEntradaRequest;
 use App\Http\Requests\Asistencia\RegistrarSalidaRequest;
 use App\Http\Requests\Auditoria\StoreAuditoriaRequest;
+use App\Http\Requests\CargoCobro\CambiarEstadoCargoCobroRequest;
+use App\Http\Requests\CargoCobro\DeleteCargoCobroRequest;
+use App\Http\Requests\CargoCobro\StoreCargoCobroRequest as StoreCargoCobroModuleRequest;
+use App\Http\Requests\CargoCobro\UpdateCargoCobroRequest;
 use App\Http\Requests\Catalogo\StoreCatalogoRequest;
 use App\Http\Requests\Catalogo\UpdateCatalogoRequest;
 use App\Http\Requests\Cliente\CambiarEstadoClienteRequest;
@@ -24,6 +28,9 @@ use App\Http\Requests\Evaluacion\StoreEvaluacionFisicaRequest;
 use App\Http\Requests\Evaluacion\StoreMedidaEvaluacionRequest;
 use App\Http\Requests\Membresia\CambiarEstadoMembresiaRequest;
 use App\Http\Requests\Membresia\CancelarMembresiaRequest;
+use App\Http\Requests\Membresia\CongelarMembresiaRequest;
+use App\Http\Requests\Membresia\ReactivarMembresiaRequest;
+use App\Http\Requests\Membresia\RenovarMembresiaRequest;
 use App\Http\Requests\Membresia\StoreMembresiaRequest;
 use App\Http\Requests\Membresia\StorePrecioMembresiaRequest;
 use App\Http\Requests\Membresia\SuspenderMembresiaRequest;
@@ -108,10 +115,17 @@ final class FitControlPermissions
         CancelarMembresiaRequest::class => 'membresias.changeStatus',
         SuspenderMembresiaRequest::class => 'membresias.manage',
         StorePrecioMembresiaRequest::class => 'membresias.manage',
+        RenovarMembresiaRequest::class => 'membresias.manage',
+        CongelarMembresiaRequest::class => 'membresias.manage',
+        ReactivarMembresiaRequest::class => 'membresias.manage',
         StoreCargoCobroRequest::class => 'pagos.create',
         StorePagoRequest::class => 'pagos.create',
         AplicarPagoRequest::class => 'pagos.manage',
         CambiarEstadoCargoRequest::class => 'pagos.changeStatus',
+        StoreCargoCobroModuleRequest::class => 'pagos.create',
+        UpdateCargoCobroRequest::class => 'pagos.update',
+        CambiarEstadoCargoCobroRequest::class => 'pagos.changeStatus',
+        DeleteCargoCobroRequest::class => 'pagos.delete',
         CambiarEstadoPagoRequest::class => 'pagos.changeStatus',
         StoreReembolsoRequest::class => 'pagos.manage',
         RegistrarEntradaRequest::class => 'asistencias.create',

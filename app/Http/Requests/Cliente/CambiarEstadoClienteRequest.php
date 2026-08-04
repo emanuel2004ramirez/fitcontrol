@@ -8,6 +8,6 @@ class CambiarEstadoClienteRequest extends FitControlRequest
 {
     public function rules(): array
     {
-        return ['estado_cliente_id' => ['required', 'integer', 'min:1'], 'motivo' => ['nullable', 'string', 'max:255'], 'usuario_id' => ['nullable', 'integer', 'min:1']];
+        return ['estado_cliente_id' => ['required', 'integer', 'min:1'], 'motivo' => ['required', 'string', 'max:255']];
     }
 }

@@ -1,0 +1,1 @@
+@extends('layouts.app') @section('title','Nuevo cargo') @section('content')<x-page-header title="Nuevo cargo por cobrar"/><x-card><form method="POST" action="{{ route('cargos-cobro.store') }}">@csrf @include('cargos-cobro._form')<div class="text-end mt-4"><x-button type="submit">Crear cargo</x-button></div></form></x-card>@endsection

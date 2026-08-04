@@ -1,0 +1,2 @@
+@extends('layouts.app') @section('title','Nuevo cliente') @php($breadcrumbs=[['label'=>'Clientes','url'=>route('clientes.index')],['label'=>'Nuevo']])
+@section('content')<x-page-header title="Nuevo cliente" subtitle="Crea el expediente principal del miembro."/><x-card><form method="POST" action="{{ route('clientes.store') }}">@csrf @include('clientes._form')<div class="text-end mt-4"><x-button :href="route('clientes.index')" variant="outline-secondary" class="me-2">Cancelar</x-button><x-button type="submit">Guardar cliente</x-button></div></form></x-card>@endsection
