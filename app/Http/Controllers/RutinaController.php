@@ -2,96 +2,109 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\Rutina\AsignarObjetivoRequest;
+use App\Http\Requests\Rutina\ActivarVersionRutinaRequest;
+use App\Http\Requests\Rutina\DuplicarRutinaRequest;
+use App\Http\Requests\Rutina\FilterRutinaRequest;
 use App\Http\Requests\Rutina\PublicarVersionRutinaRequest;
 use App\Http\Requests\Rutina\StoreEjercicioRutinaRequest;
 use App\Http\Requests\Rutina\StoreRutinaRequest;
 use App\Http\Requests\Rutina\StoreSesionRutinaRequest;
 use App\Http\Requests\Rutina\StoreVersionRutinaRequest;
-use App\Http\Requests\Rutina\UpdateRutinaRequest;
+use App\Services\CatalogoService;
 use App\Services\RutinaService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
 class RutinaController extends Controller
 {
-    public function __construct(private readonly RutinaService $service) {}
+    public function __construct(private readonly RutinaService $service, private readonly CatalogoService $catalogos) {}
 
-    public function index(): View
+    public function index(FilterRutinaRequest $r): View
     {
-        return view('rutinas.index', ['rutinas' => $this->service->listar()]);
+        $f = $r->validated();
+
+        return view('rutinas.index', ['rutinas' => $this->service->paginar($f, (int) ($f['por_pagina'] ?? 15), (int) ($f['page'] ?? 1)), 'filtros' => $f, ...$this->opciones()]);
     }
 
     public function create(): View
     {
-        return view('rutinas.create');
+        return view('rutinas.create', $this->opciones());
     }
 
-    public function store(StoreRutinaRequest $request): RedirectResponse
+    public function store(StoreRutinaRequest $r): RedirectResponse
     {
-        $this->service->crear($request->validated());
+        $x = $this->service->crear([...$r->validated(), 'usuario_id' => $r->user()?->getAuthIdentifier()]);
 
-        return redirect()->route('rutinas.index')->with('success', 'Rutina creada correctamente.');
+        return redirect()->route('rutinas.show', $x->id)->with('success', 'Rutina creada.');
     }
 
-    public function show(int $rutina): View
+    public function show(int $rutina, ?int $version = null): View
     {
-        return view('rutinas.show', ['rutina' => $this->service->obtener($rutina)]);
+        $versiones = $this->service->versiones($rutina);
+        $seleccion = $version ?? ($this->service->obtener($rutina)?->version_activa_id ?? ($versiones[0]->id ?? null));
+
+        return view('rutinas.show', ['rutina' => $this->service->obtener($rutina), 'versiones' => $versiones, 'versionSeleccionada' => $seleccion, 'contenido' => $seleccion ? $this->service->contenido($seleccion) : [], 'historial' => $this->service->historial($rutina), ...$this->opciones()]);
     }
 
-    public function edit(int $rutina): View
+    public function crearVersion(StoreVersionRutinaRequest $r, int $rutina): RedirectResponse
     {
-        return view('rutinas.edit', ['rutina' => $this->service->obtener($rutina)]);
+        $this->service->crearVersion($rutina, $r->validated('notas_cambio'), $r->user()?->getAuthIdentifier());
+
+        return back()->with('success', 'Versión creada.');
     }
 
-    public function update(UpdateRutinaRequest $request, int $rutina): RedirectResponse
+    public function publicarVersion(PublicarVersionRutinaRequest $r, int $rutina): RedirectResponse
     {
-        $this->service->actualizar($rutina, $request->validated());
+        $this->service->publicarVersion($r->integer('version_rutina_id'));
 
-        return redirect()->route('rutinas.show', $rutina)->with('success', 'Rutina actualizada correctamente.');
+        return back()->with('success', 'Versión publicada.');
     }
 
-    public function destroy(int $rutina): RedirectResponse
+    public function activarVersion(ActivarVersionRutinaRequest $r, int $rutina): RedirectResponse
     {
-        $this->service->eliminar($rutina);
+        $d = $r->validated();
+        $this->service->activarVersion($rutina, $d['version_rutina_id'], $d['motivo'], $r->user()?->getAuthIdentifier());
 
-        return redirect()->route('rutinas.index')->with('success', 'Rutina retirada correctamente.');
+        return back()->with('success', 'Versión activada.');
     }
 
-    public function asignarObjetivo(AsignarObjetivoRequest $request): RedirectResponse
+    public function duplicar(DuplicarRutinaRequest $r, int $rutina): RedirectResponse
     {
-        $data = $request->validated();
-        $this->service->asignarObjetivo($data['rutina_id'], $data['objetivo_id']);
+        $x = $this->service->duplicar($rutina, [...$r->validated(), 'usuario_id' => $r->user()?->getAuthIdentifier()]);
 
-        return back()->with('success', 'Objetivo asignado correctamente.');
+        return redirect()->route('rutinas.show', $x->id)->with('success', 'Rutina duplicada.');
     }
 
-    public function crearVersion(StoreVersionRutinaRequest $request): RedirectResponse
+    public function agregarSesion(StoreSesionRutinaRequest $r, int $rutina): RedirectResponse
     {
-        $data = $request->validated();
-        $this->service->crearVersion($data['rutina_id'], $data['notas_cambio'] ?? null, $data['usuario_id'] ?? null);
+        $this->service->agregarSesion($r->validated());
 
-        return back()->with('success', 'Versión creada correctamente.');
+        return back()->with('success', 'Sesión agregada.');
     }
 
-    public function publicarVersion(PublicarVersionRutinaRequest $request): RedirectResponse
+    public function agregarEjercicio(StoreEjercicioRutinaRequest $r, int $rutina): RedirectResponse
     {
-        $this->service->publicarVersion($request->integer('version_rutina_id'));
+        $this->service->agregarEjercicio($r->validated());
 
-        return back()->with('success', 'Versión publicada correctamente.');
+        return back()->with('success', 'Ejercicio agregado.');
     }
 
-    public function agregarSesion(StoreSesionRutinaRequest $request): RedirectResponse
+    public function eliminarSesion(int $rutina, int $sesion): RedirectResponse
     {
-        $this->service->agregarSesion($request->validated());
+        $this->service->eliminarSesion($sesion);
 
-        return back()->with('success', 'Sesión agregada correctamente.');
+        return back()->with('success', 'Sesión eliminada.');
     }
 
-    public function agregarEjercicio(StoreEjercicioRutinaRequest $request): RedirectResponse
+    public function eliminarEjercicio(int $rutina, int $detalle): RedirectResponse
     {
-        $this->service->agregarEjercicio($request->validated());
+        $this->service->eliminarEjercicio($detalle);
 
-        return back()->with('success','Ejercicio agregado correctamente.');
+        return back()->with('success', 'Ejercicio retirado.');
+    }
+
+    private function opciones(): array
+    {
+        return ['clientes' => $this->service->clientes(), 'entrenadores' => $this->service->entrenadores(), 'ejercicios' => $this->service->ejercicios(), 'estados' => $this->catalogos->listar('estados_rutina')];
     }
 }

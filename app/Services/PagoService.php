@@ -2,8 +2,43 @@
 
 namespace App\Services;
 
+use Illuminate\Pagination\LengthAwarePaginator;
+
 class PagoService extends StoredProcedureService
 {
+    public function paginar(array $f, int $per, int $page): LengthAwarePaginator
+    {
+        $p = [$f['texto'] ?? null, $f['cliente_id'] ?? null, $f['estado_id'] ?? null, $f['metodo_id'] ?? null, $f['desde'] ?? null, $f['hasta'] ?? null];
+        $total = (int) ($this->selectOne('sp_pagos_contar', $p)?->total ?? 0);
+
+        return new LengthAwarePaginator($this->select('sp_pagos_filtrar', [...$p, $per, ($page - 1) * $per]), $total, $per, $page, ['path' => LengthAwarePaginator::resolveCurrentPath(), 'query' => $f]);
+    }
+
+    public function historial(int $id): array
+    {
+        return $this->select('sp_pagos_historial', [$id]);
+    }
+
+    public function aplicaciones(int $id): array
+    {
+        return $this->select('sp_pagos_aplicaciones', [$id]);
+    }
+
+    public function cargosDisponibles(int $id): array
+    {
+        return $this->select('sp_pagos_cargos_disponibles', [$id]);
+    }
+
+    public function resumen(): ?object
+    {
+        return $this->selectOne('sp_pagos_resumen');
+    }
+
+    public function clientes(): array
+    {
+        return $this->select('sp_pagos_clientes');
+    }
+
     public function listar(int $limite = 100, int $offset = 0): array
     {
         return $this->select('sp_pagos_listar', [$limite, $offset]);

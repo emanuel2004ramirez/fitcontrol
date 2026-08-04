@@ -2,8 +2,38 @@
 
 namespace App\Services;
 
+use Illuminate\Pagination\LengthAwarePaginator;
+
 class EjercicioService extends StoredProcedureService
 {
+    public function paginar(array $f, int $per, int $page): LengthAwarePaginator
+    {
+        $p = [$f['texto'] ?? null, $f['estado_id'] ?? null, $f['grupo_id'] ?? null, $f['patron'] ?? null, $f['equipamiento'] ?? null];
+        $total = (int) ($this->selectOne('sp_ejercicios_contar', $p)?->total ?? 0);
+
+        return new LengthAwarePaginator($this->select('sp_ejercicios_filtrar', [...$p, $per, ($page - 1) * $per]), $total, $per, $page, ['path' => LengthAwarePaginator::resolveCurrentPath(), 'query' => $f]);
+    }
+
+    public function grupos(int $id): array
+    {
+        return $this->select('sp_ejercicios_grupos', [$id]);
+    }
+
+    public function patrones(): array
+    {
+        return $this->select('sp_ejercicios_patrones');
+    }
+
+    public function retirarGrupoMuscular(int $ejercicio, int $grupo): bool
+    {
+        return $this->statement('sp_ejercicios_retirar_grupo', [$ejercicio, $grupo]);
+    }
+
+    public function cambiarEstado(int $id, int $estado): bool
+    {
+        return $this->statement('sp_ejercicios_cambiar_estado', [$id, $estado]);
+    }
+
     public function listar(int $limite = 100, int $offset = 0): array
     {
         return $this->select('sp_ejercicios_listar', [$limite, $offset]);

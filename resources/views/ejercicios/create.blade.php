@@ -1,0 +1,1 @@
+@extends('layouts.app') @section('title','Nuevo ejercicio') @section('content')<x-page-header title="Nuevo ejercicio"/><x-card><form method="POST" action="{{ route('ejercicios.store') }}">@csrf @include('ejercicios._form')<div class="text-end mt-4"><x-button type="submit">Guardar</x-button></div></form></x-card>@endsection

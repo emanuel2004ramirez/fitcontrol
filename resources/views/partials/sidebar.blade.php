@@ -7,8 +7,9 @@
         ['label' => 'Pagos', 'icon' => 'bi-wallet2', 'permission' => 'pagos.viewAny', 'route' => 'pagos.index'],
         ['label' => 'Cargos por cobrar', 'icon' => 'bi-receipt', 'permission' => 'pagos.viewAny', 'route' => 'cargos-cobro.index'],
         ['label' => 'Asistencias', 'icon' => 'bi-qr-code-scan', 'permission' => 'asistencias.ver', 'route' => 'asistencias.index'],
-        ['label' => 'Rutinas', 'icon' => 'bi-clipboard2-pulse', 'permission' => 'rutinas.ver', 'route' => 'rutinas.index'],
+        ['label' => 'Rutinas', 'icon' => 'bi-clipboard2-pulse', 'permission' => 'rutinas.viewAny', 'route' => 'rutinas.index'],
         ['label' => 'Evaluaciones', 'icon' => 'bi-activity', 'permission' => 'evaluaciones.ver', 'route' => 'evaluaciones.index'],
+        ['label' => 'Ejercicios', 'icon' => 'bi-person-arms-up', 'permission' => 'ejercicios.viewAny', 'route' => 'ejercicios.index'],
         ['label' => 'Personal', 'icon' => 'bi-person-badge', 'permission' => 'personal.viewAny', 'route' => 'personal.index'],
         ['label' => 'Reportes', 'icon' => 'bi-bar-chart-line', 'permission' => 'reportes.ver', 'route' => 'reportes.dashboard'],
     ];

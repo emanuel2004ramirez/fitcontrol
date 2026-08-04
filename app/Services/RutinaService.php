@@ -2,8 +2,68 @@
 
 namespace App\Services;
 
+use Illuminate\Pagination\LengthAwarePaginator;
+
 class RutinaService extends StoredProcedureService
 {
+    public function paginar(array $f, int $per, int $page): LengthAwarePaginator
+    {
+        $p = [$f['texto'] ?? null, $f['cliente_id'] ?? null, $f['entrenador_id'] ?? null, $f['estado_id'] ?? null];
+        $total = (int) ($this->selectOne('sp_rutinas_contar', $p)?->total ?? 0);
+
+        return new LengthAwarePaginator($this->select('sp_rutinas_filtrar', [...$p, $per, ($page - 1) * $per]), $total, $per, $page, ['path' => LengthAwarePaginator::resolveCurrentPath(), 'query' => $f]);
+    }
+
+    public function versiones(int $id): array
+    {
+        return $this->select('sp_rutinas_versiones', [$id]);
+    }
+
+    public function contenido(int $version): array
+    {
+        return $this->select('sp_rutinas_contenido_version', [$version]);
+    }
+
+    public function historial(int $id): array
+    {
+        return $this->select('sp_rutinas_historial', [$id]);
+    }
+
+    public function activarVersion(int $rutina, int $version, string $motivo, ?int $usuario): bool
+    {
+        return $this->statement('sp_rutinas_activar_version', [$rutina, $version, $motivo, $usuario]);
+    }
+
+    public function duplicar(int $id, array $d): ?object
+    {
+        return $this->selectOne('sp_rutinas_duplicar', [$id, $d['cliente_id'], $d['entrenador_id'], $d['nombre'], $d['usuario_id'] ?? null]);
+    }
+
+    public function eliminarSesion(int $id): bool
+    {
+        return $this->statement('sp_rutinas_eliminar_sesion', [$id]);
+    }
+
+    public function eliminarEjercicio(int $id): bool
+    {
+        return $this->statement('sp_rutinas_eliminar_ejercicio', [$id]);
+    }
+
+    public function clientes(): array
+    {
+        return $this->select('sp_rutinas_clientes');
+    }
+
+    public function entrenadores(): array
+    {
+        return $this->select('sp_rutinas_entrenadores');
+    }
+
+    public function ejercicios(): array
+    {
+        return $this->select('sp_rutinas_ejercicios');
+    }
+
     public function listar(int $limite = 100, int $offset = 0): array
     {
         return $this->select('sp_rutinas_listar', [$limite, $offset]);

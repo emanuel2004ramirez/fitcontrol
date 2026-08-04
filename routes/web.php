@@ -2,13 +2,54 @@
 
 use App\Http\Controllers\CargoCobroController;
 use App\Http\Controllers\ClienteController;
+use App\Http\Controllers\EjercicioController;
 use App\Http\Controllers\MembresiaController;
+use App\Http\Controllers\PagoController;
 use App\Http\Controllers\PersonalController;
+use App\Http\Controllers\RutinaController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/dashboard');
 
 Route::view('/dashboard', 'dashboard.index')->name('dashboard');
+
+Route::prefix('rutinas')->name('rutinas.')->controller(RutinaController::class)->group(function (): void {
+    Route::get('/', 'index')->middleware('permission:rutinas.viewAny')->name('index');
+    Route::get('/crear', 'create')->middleware('permission:rutinas.create')->name('create');
+    Route::post('/', 'store')->middleware('permission:rutinas.create')->name('store');
+    Route::get('/{rutina}', 'show')->middleware('permission:rutinas.view')->name('show')->whereNumber('rutina');
+    Route::get('/{rutina}/versiones/{version}', 'show')->middleware('permission:rutinas.view')->name('version')->whereNumber(['rutina', 'version']);
+    Route::post('/{rutina}/versiones', 'crearVersion')->middleware('permission:rutinas.manage')->name('versiones.store');
+    Route::post('/{rutina}/publicar', 'publicarVersion')->middleware('permission:rutinas.manage')->name('versiones.publicar');
+    Route::post('/{rutina}/activar', 'activarVersion')->middleware('permission:rutinas.manage')->name('versiones.activar');
+    Route::post('/{rutina}/duplicar', 'duplicar')->middleware('permission:rutinas.create')->name('duplicar');
+    Route::post('/{rutina}/sesiones', 'agregarSesion')->middleware('permission:rutinas.manage')->name('sesiones.store');
+    Route::delete('/{rutina}/sesiones/{sesion}', 'eliminarSesion')->middleware('permission:rutinas.manage')->name('sesiones.destroy');
+    Route::post('/{rutina}/ejercicios', 'agregarEjercicio')->middleware('permission:rutinas.manage')->name('ejercicios.store');
+    Route::delete('/{rutina}/ejercicios/{detalle}', 'eliminarEjercicio')->middleware('permission:rutinas.manage')->name('ejercicios.destroy');
+});
+
+Route::prefix('ejercicios')->name('ejercicios.')->controller(EjercicioController::class)->group(function (): void {
+    Route::get('/', 'index')->middleware('permission:ejercicios.viewAny')->name('index');
+    Route::get('/crear', 'create')->middleware('permission:ejercicios.create')->name('create');
+    Route::post('/', 'store')->middleware('permission:ejercicios.create')->name('store');
+    Route::get('/{ejercicio}', 'show')->middleware('permission:ejercicios.view')->name('show')->whereNumber('ejercicio');
+    Route::get('/{ejercicio}/editar', 'edit')->middleware('permission:ejercicios.update')->name('edit')->whereNumber('ejercicio');
+    Route::put('/{ejercicio}', 'update')->middleware('permission:ejercicios.update')->name('update')->whereNumber('ejercicio');
+    Route::delete('/{ejercicio}', 'destroy')->middleware('permission:ejercicios.delete')->name('destroy')->whereNumber('ejercicio');
+    Route::patch('/{ejercicio}/estado', 'cambiarEstado')->middleware('permission:ejercicios.changeStatus')->name('estado')->whereNumber('ejercicio');
+    Route::post('/{ejercicio}/grupos', 'asignarGrupo')->middleware('permission:ejercicios.manage')->name('grupos.store')->whereNumber('ejercicio');
+    Route::delete('/{ejercicio}/grupos/{grupo}', 'retirarGrupo')->middleware('permission:ejercicios.manage')->name('grupos.destroy')->whereNumber(['ejercicio', 'grupo']);
+});
+
+Route::prefix('pagos')->name('pagos.')->controller(PagoController::class)->group(function (): void {
+    Route::get('/', 'index')->middleware('permission:pagos.viewAny')->name('index');
+    Route::get('/crear', 'create')->middleware('permission:pagos.create')->name('create');
+    Route::post('/', 'store')->middleware('permission:pagos.create')->name('store');
+    Route::get('/{pago}', 'show')->middleware('permission:pagos.view')->name('show')->whereNumber('pago');
+    Route::post('/{pago}/aplicaciones', 'aplicar')->middleware('permission:pagos.manage')->name('aplicar')->whereNumber('pago');
+    Route::patch('/{pago}/estado', 'cambiarEstado')->middleware('permission:pagos.changeStatus')->name('estado')->whereNumber('pago');
+});
 
 Route::prefix('cargos-cobro')->name('cargos-cobro.')->controller(CargoCobroController::class)->group(function (): void {
     Route::get('/', 'index')->middleware('permission:pagos.viewAny')->name('index');
