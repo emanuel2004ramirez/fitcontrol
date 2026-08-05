@@ -1561,6 +1561,24 @@ BEGIN
  FROM users WHERE deleted_at IS NULL AND (username=LOWER(TRIM(p_login)) OR email=LOWER(TRIM(p_login))) LIMIT 1;
 END$$
 
+DROP PROCEDURE IF EXISTS sp_auth_user_profile$$
+CREATE PROCEDURE sp_auth_user_profile(IN p_user_id BIGINT UNSIGNED)
+READS SQL DATA
+BEGIN
+ SELECT u.id,u.name,u.username,u.email,u.personal_id,pe.codigo_empleado,CONCAT(pe.nombre,' ',pe.apellido) empleado,c.codigo cargo_codigo,c.nombre cargo
+ FROM users u LEFT JOIN personal pe ON pe.id=u.personal_id AND pe.deleted_at IS NULL LEFT JOIN cargos c ON c.id=pe.cargo_id
+ WHERE u.id=p_user_id AND u.deleted_at IS NULL LIMIT 1;
+END$$
+
+DROP PROCEDURE IF EXISTS sp_users_vincular_personal$$
+CREATE PROCEDURE sp_users_vincular_personal(IN p_user_id BIGINT UNSIGNED,IN p_personal_id BIGINT UNSIGNED)
+BEGIN
+ IF NOT EXISTS(SELECT 1 FROM users WHERE id=p_user_id AND deleted_at IS NULL) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Usuario no encontrado'; END IF;
+ IF p_personal_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM personal WHERE id=p_personal_id AND deleted_at IS NULL) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Empleado no encontrado'; END IF;
+ IF p_personal_id IS NOT NULL AND EXISTS(SELECT 1 FROM users WHERE id<>p_user_id AND personal_id=p_personal_id AND deleted_at IS NULL) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='El empleado ya tiene usuario'; END IF;
+ UPDATE users SET personal_id=p_personal_id,updated_at=CURRENT_TIMESTAMP WHERE id=p_user_id;
+END$$
+
 DROP PROCEDURE IF EXISTS sp_password_reset_tokens_guardar$$
 CREATE PROCEDURE sp_password_reset_tokens_guardar(IN p_email VARCHAR(255),IN p_token VARCHAR(255))
 BEGIN

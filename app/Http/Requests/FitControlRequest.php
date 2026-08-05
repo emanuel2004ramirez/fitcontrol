@@ -4,6 +4,8 @@ namespace App\Http\Requests;
 
 use App\Support\Authorization\FitControlPermissions;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Arr;
+use Illuminate\Validation\Validator;
 
 abstract class FitControlRequest extends FormRequest
 {
@@ -41,6 +43,46 @@ abstract class FitControlRequest extends FormRequest
             'uuid' => 'El campo :attribute debe ser un UUID válido.', 'url' => 'El campo :attribute debe contener una URL válida.',
             'array' => 'El campo :attribute debe ser una lista válida.', 'confirmed' => 'La confirmación de :attribute no coincide.',
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        if ($this->isMethod('GET')) {
+            return;
+        }
+
+        $validator->after(function (Validator $validator): void {
+            foreach (Arr::dot($this->all()) as $field => $value) {
+                if ($this->isTechnicalField((string) $field)) {
+                    continue;
+                }
+
+                if ($value === null || (is_string($value) && trim($value) === '') || (is_array($value) && $value === [])) {
+                    $attribute = $this->attributes()[$field] ?? str_replace('_', ' ', (string) $field);
+                    $validator->errors()->add((string) $field, "El campo {$attribute} es obligatorio.");
+                }
+            }
+        });
+    }
+
+    private function isTechnicalField(string $field): bool
+    {
+        $technical = [
+            '_token',
+            '_method',
+            'id',
+            'usuario_id',
+            'creado_por',
+            'procesado_por',
+            'cancelada_por',
+            'entrada_registrada_por',
+            'salida_registrada_por',
+        ];
+
+        return in_array($field, $technical, true)
+            || str_ends_with($field, '.id')
+            || str_ends_with($field, '.usuario_id')
+            || str_ends_with($field, '.creado_por');
     }
 
     public function attributes(): array

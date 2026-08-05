@@ -44,6 +44,11 @@ class UsuarioService extends StoredProcedureService
         return $this->select('sp_auth_user_permissions', [$id]);
     }
 
+    public function perfil(int $id): ?object
+    {
+        return $this->selectOne('sp_auth_user_profile', [$id]);
+    }
+
     public function guardarRol(string $codigo, string $nombre, string $descripcion): ?object
     {
         return $this->selectOne('sp_auth_upsert_role', [$codigo, $nombre, $descripcion]);
@@ -72,6 +77,11 @@ class UsuarioService extends StoredProcedureService
     public function asignarRol(int $usuarioId, int $rolId): bool
     {
         return $this->statement('sp_users_asignar_rol', [$usuarioId, $rolId]);
+    }
+
+    public function vincularPersonal(int $usuarioId, ?int $personalId): bool
+    {
+        return $this->statement('sp_users_vincular_personal', [$usuarioId, $personalId]);
     }
 
     public function retirarRol(int $usuarioId, int $rolId): bool

@@ -37,8 +37,12 @@ class LoginController extends Controller
         if (collect($roles)->contains(fn (object $role): bool => $role->codigo === 'super-admin')) {
             $permissions = ['*'];
         }
+        $profile = $this->users->perfil($userId);
+        $position = $profile?->cargo;
+        $roleName = $roles[0]->nombre ?? 'Usuario';
+
         $request->session()->put('permissions', $permissions);
-        $request->session()->put('auth_user', ['name' => Auth::user()->name, 'role' => $roles[0]->nombre ?? 'Usuario']);
+        $request->session()->put('auth_user', ['name' => Auth::user()->name, 'role' => $position ? "{$position} · {$roleName}" : $roleName]);
 
         return redirect()->intended(route('dashboard'));
     }

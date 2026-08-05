@@ -15,13 +15,14 @@ class DatabaseSeeder extends Seeder
             throw new RuntimeException('No se pudo preparar la matriz de roles y permisos.');
         }
 
-        $this->call(DemoUserSeeder::class);
         $this->call([
             GeneralCatalogSeeder::class,
             MembershipCatalogSeeder::class,
             FinanceCatalogSeeder::class,
             TrainingCatalogSeeder::class,
             DemoEmployeeSeeder::class,
+            DemoUserSeeder::class,
+            DemoClientSeeder::class,
         ]);
     }
 }

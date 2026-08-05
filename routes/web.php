@@ -41,8 +41,8 @@ Route::middleware('auth')->group(function (): void {
         Route::get('/', 'index')->middleware('permission:asistencias.viewAny')->name('index');
         Route::get('/entrada', 'create')->middleware('permission:asistencias.create')->name('create');
         Route::post('/', 'store')->middleware('permission:asistencias.create')->name('store');
-        Route::get('/{asistencia}', 'show')->middleware('permission:asistencias.view')->name('show');
-        Route::patch('/{asistencia}/salida', 'registrarSalida')->middleware('permission:asistencias.update')->name('salida');
+        Route::get('/{asistencia}', 'show')->middleware('permission:asistencias.view')->name('show')->whereNumber('asistencia');
+        Route::patch('/{asistencia}/salida', 'registrarSalida')->middleware('permission:asistencias.update')->name('salida')->whereNumber('asistencia');
     });
     Route::prefix('evaluaciones')->name('evaluaciones.')->controller(EvaluacionFisicaController::class)->group(function (): void {
         Route::get('/', 'index')->middleware('permission:evaluaciones.viewAny')->name('index');
