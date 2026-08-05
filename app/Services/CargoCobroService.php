@@ -9,9 +9,8 @@ class CargoCobroService extends StoredProcedureService
     public function paginar(array $f, int $per, int $page): LengthAwarePaginator
     {
         $p = [$f['texto'] ?? null, $f['cliente_id'] ?? null, $f['estado_id'] ?? null, $f['vencidos'] ?? false, $f['desde'] ?? null, $f['hasta'] ?? null];
-        $total = (int) ($this->selectOne('sp_cargos_cobro_contar', $p)?->total ?? 0);
 
-        return new LengthAwarePaginator($this->select('sp_cargos_cobro_filtrar', [...$p, $per, ($page - 1) * $per]), $total, $per, $page, ['path' => LengthAwarePaginator::resolveCurrentPath(), 'query' => $f]);
+        return $this->paginateProcedures('sp_cargos_cobro_contar', 'sp_cargos_cobro_filtrar', $p, $per, $page, $f);
     }
 
     public function obtener(int $id): ?object

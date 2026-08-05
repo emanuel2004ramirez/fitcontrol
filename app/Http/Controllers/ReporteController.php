@@ -2,68 +2,47 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\Reporte\CuentasPorCobrarRequest;
-use App\Http\Requests\Reporte\DiasRequest;
-use App\Http\Requests\Reporte\EntrenamientosClienteRequest;
-use App\Http\Requests\Reporte\PeriodoRequest;
-use App\Http\Requests\Reporte\ProgresoClienteRequest;
+use App\Http\Requests\Reporte\GenerarReporteRequest;
+use App\Services\ReporteExportService;
 use App\Services\ReporteService;
+use App\Support\Reports\ReportDefinition;
+use Illuminate\Http\Response;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ReporteController extends Controller
 {
-    public function __construct(private readonly ReporteService $service) {}
+    public function __construct(private readonly ReporteService $service, private readonly ReporteExportService $exporter) {}
 
-    public function dashboard(): View
+    public function index(): View
     {
-        return view('reportes.dashboard', ['resumen' => $this->service->dashboard()]);
+        return view('reportes.index', ['reportes' => ReportDefinition::all()]);
     }
 
-    public function membresiasPorVencer(DiasRequest $request): View
+    public function show(GenerarReporteRequest $r, string $tipo): View
     {
-        return view('reportes.membresias-por-vencer', ['resultados' => $this->service->membresiasPorVencer($request->integer('dias', 30))]);
+        return $this->view($tipo, $r->validated());
     }
 
-    public function membresiasVencidas(): View
+    public function imprimir(GenerarReporteRequest $r, string $tipo): View
     {
-        return view('reportes.membresias-vencidas', ['resultados' => $this->service->membresiasVencidas()]);
+        return $this->view($tipo, $r->validated(), true);
     }
 
-    public function ingresos(PeriodoRequest $request): View
+    public function pdf(GenerarReporteRequest $r, string $tipo): Response
     {
-        $data = $request->validated();
+        $f = $r->validated();
 
-        return view('reportes.ingresos', ['resultados' => $this->service->ingresos($data['desde'], $data['hasta'])]);
+        return $this->exporter->pdf($tipo, $f, $this->service->generar($tipo, $f));
     }
 
-    public function cuentasPorCobrar(CuentasPorCobrarRequest $request): View
+    public function excel(GenerarReporteRequest $r, string $tipo): StreamedResponse
     {
-        return view('reportes.cuentas-por-cobrar', ['resultados' => $this->service->cuentasPorCobrar($request->integer('cliente_id') ?: null)]);
+        return $this->exporter->excel($tipo, $this->service->generar($tipo, $r->validated()));
     }
 
-    public function asistenciaDiaria(PeriodoRequest $request): View
+    private function view(string $tipo, array $f, bool $imprimir = false): View
     {
-        $data = $request->validated();
-
-        return view('reportes.asistencia-diaria', ['resultados' => $this->service->asistenciaDiaria($data['desde'], $data['hasta'])]);
-    }
-
-    public function clientesSinAsistencia(DiasRequest $request): View
-    {
-        return view('reportes.clientes-sin-asistencia', ['resultados' => $this->service->clientesSinAsistencia($request->integer('dias', 30))]);
-    }
-
-    public function progresoCliente(ProgresoClienteRequest $request): View
-    {
-        $data = $request->validated();
-
-        return view('reportes.progreso-cliente', ['resultados' => $this->service->progresoCliente($data['cliente_id'], $data['tipo_medida_id'], $data['desde'] ?? null, $data['hasta'] ?? null)]);
-    }
-
-    public function entrenamientosCliente(EntrenamientosClienteRequest $request): View
-    {
-        $data = $request->validated();
-
-        return view('reportes.entrenamientos-cliente', ['resultados' => $this->service->entrenamientosCliente($data['cliente_id'], $data['desde'], $data['hasta'])]);
+        return view('reportes.show', ['tipo' => $tipo, 'definition' => ReportDefinition::get($tipo), 'filtros' => $f, 'resultados' => $this->service->generar($tipo, $f), 'estados' => $this->service->estados($tipo), 'imprimir' => $imprimir]);
     }
 }

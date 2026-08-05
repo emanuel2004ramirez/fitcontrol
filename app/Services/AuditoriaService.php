@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use Illuminate\Pagination\LengthAwarePaginator;
+
 class AuditoriaService extends StoredProcedureService
 {
     public function listar(int $limite = 100, int $offset = 0): array
@@ -12,6 +14,13 @@ class AuditoriaService extends StoredProcedureService
     public function obtener(int $id): ?object
     {
         return $this->selectOne('sp_auditoria_obtener', [$id]);
+    }
+
+    public function paginar(array $filtros, int $porPagina, int $pagina): LengthAwarePaginator
+    {
+        $parametros = [$filtros['texto'] ?? null, $filtros['evento'] ?? null, $filtros['entidad'] ?? null, $filtros['user_id'] ?? null, $filtros['desde'] ?? null, $filtros['hasta'] ?? null];
+
+        return $this->paginateProcedures('sp_auditoria_contar', 'sp_auditoria_filtrar', $parametros, $porPagina, $pagina, $filtros);
     }
 
     public function registrar(array $data): bool

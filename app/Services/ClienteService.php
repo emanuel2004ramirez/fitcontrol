@@ -24,10 +24,8 @@ class ClienteService extends StoredProcedureService
     public function paginar(array $filtros, int $porPagina, int $pagina): LengthAwarePaginator
     {
         $parametros = [$filtros['texto'] ?? null, $filtros['estado_id'] ?? null, $filtros['sexo_id'] ?? null, $filtros['fecha_desde'] ?? null, $filtros['fecha_hasta'] ?? null];
-        $total = (int) ($this->selectOne('sp_clientes_contar', $parametros)?->total ?? 0);
-        $resultados = $this->select('sp_clientes_filtrar', [...$parametros, $porPagina, ($pagina - 1) * $porPagina]);
 
-        return new LengthAwarePaginator($resultados, $total, $porPagina, $pagina, ['path' => LengthAwarePaginator::resolveCurrentPath(), 'query' => $filtros]);
+        return $this->paginateProcedures('sp_clientes_contar', 'sp_clientes_filtrar', $parametros, $porPagina, $pagina, $filtros);
     }
 
     public function contactosEmergencia(int $id): array

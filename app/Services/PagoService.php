@@ -9,9 +9,8 @@ class PagoService extends StoredProcedureService
     public function paginar(array $f, int $per, int $page): LengthAwarePaginator
     {
         $p = [$f['texto'] ?? null, $f['cliente_id'] ?? null, $f['estado_id'] ?? null, $f['metodo_id'] ?? null, $f['desde'] ?? null, $f['hasta'] ?? null];
-        $total = (int) ($this->selectOne('sp_pagos_contar', $p)?->total ?? 0);
 
-        return new LengthAwarePaginator($this->select('sp_pagos_filtrar', [...$p, $per, ($page - 1) * $per]), $total, $per, $page, ['path' => LengthAwarePaginator::resolveCurrentPath(), 'query' => $f]);
+        return $this->paginateProcedures('sp_pagos_contar', 'sp_pagos_filtrar', $p, $per, $page, $f);
     }
 
     public function historial(int $id): array

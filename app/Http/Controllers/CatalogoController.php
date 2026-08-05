@@ -50,6 +50,6 @@ class CatalogoController extends Controller
     {
         $this->service->eliminar($catalogo, $registro);
 
-        return redirect()->route('catalogos.index',$catalogo)->with('success','Registro retirado correctamente.');
+        return redirect()->route('catalogos.index', $catalogo)->with('success', 'Registro retirado correctamente.');
     }
 }

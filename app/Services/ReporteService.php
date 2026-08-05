@@ -2,8 +2,24 @@
 
 namespace App\Services;
 
+use App\Support\Reports\ReportDefinition;
+
 class ReporteService extends StoredProcedureService
 {
+    public function generar(string $tipo, array $filtros): array
+    {
+        ReportDefinition::get($tipo);
+
+        return $this->select('sp_reportes_generar', [$tipo, $filtros['desde'] ?? null, $filtros['hasta'] ?? null, $filtros['busqueda'] ?? null, $filtros['estado_id'] ?? null]);
+    }
+
+    public function estados(string $tipo): array
+    {
+        $catalogo = ['clientes' => 'estados_cliente', 'personal' => 'estados_personal', 'pagos' => 'estados_pago', 'cobros' => 'estados_cargo_cobro', 'membresias' => 'estados_membresia'][$tipo] ?? null;
+
+        return $catalogo ? $this->select("sp_{$catalogo}_listar", [null, 100, 0]) : [];
+    }
+
     public function dashboard(): ?object
     {
         return $this->selectOne('sp_dashboard_resumen');

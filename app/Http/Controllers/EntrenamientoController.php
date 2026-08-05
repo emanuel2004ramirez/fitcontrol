@@ -48,6 +48,6 @@ class EntrenamientoController extends Controller
         $data = $request->validated();
         $this->service->finalizar($entrenamiento, $data['finalizado_at'] ?? null, $data['esfuerzo_percibido'] ?? null, $data['notas'] ?? null);
 
-        return back()->with('success','Entrenamiento finalizado correctamente.');
+        return back()->with('success', 'Entrenamiento finalizado correctamente.');
     }
 }

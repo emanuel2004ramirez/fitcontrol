@@ -11,7 +11,7 @@ abstract class ModulePolicy
 
     public function before(User $user): ?bool
     {
-        return $user->hasRole(FitControlPermissions::SUPER_ADMIN_ROLE) ? true : null;
+        return in_array('*', session('permissions', []), true) ? true : null;
     }
 
     public function viewAny(User $user): bool
@@ -51,6 +51,6 @@ abstract class ModulePolicy
 
     protected function allows(User $user, string $action): bool
     {
-        return $user->hasPermissionTo(FitControlPermissions::name($this->module, $action));
+        return in_array(FitControlPermissions::name($this->module, $action), session('permissions', []), true);
     }
 }

@@ -44,6 +44,6 @@ class EjercicioRutina extends Model
             return null;
         }
 
-return $this->repeticiones_max && $this->repeticiones_max !== $this->repeticiones_min ? "{$this->repeticiones_min}-{$this->repeticiones_max}" : (string) $this->repeticiones_min;
+        return $this->repeticiones_max && $this->repeticiones_max !== $this->repeticiones_min ? "{$this->repeticiones_min}-{$this->repeticiones_max}" : (string) $this->repeticiones_min;
     }
 }

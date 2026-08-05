@@ -4,7 +4,6 @@ namespace App\Support\Authorization;
 
 use App\Http\Requests\Asistencia\RegistrarEntradaRequest;
 use App\Http\Requests\Asistencia\RegistrarSalidaRequest;
-use App\Http\Requests\Auditoria\StoreAuditoriaRequest;
 use App\Http\Requests\CargoCobro\CambiarEstadoCargoCobroRequest;
 use App\Http\Requests\CargoCobro\DeleteCargoCobroRequest;
 use App\Http\Requests\CargoCobro\StoreCargoCobroRequest as StoreCargoCobroModuleRequest;
@@ -145,7 +144,6 @@ final class FitControlPermissions
         IniciarEntrenamientoRequest::class => 'entrenamientos.create',
         StoreSerieRealizadaRequest::class => 'entrenamientos.manage',
         FinalizarEntrenamientoRequest::class => 'entrenamientos.update',
-        StoreAuditoriaRequest::class => 'auditoria.create',
     ];
 
     /** @return array<int, array{codigo: string, nombre: string, modulo: string, descripcion: string}> */

@@ -15,7 +15,9 @@ abstract class FitControlRequest extends FormRequest
             return true;
         }
 
-        return $this->user()?->can($permission) ?? false;
+        $permissions = $this->session()->get('permissions', []);
+
+        return in_array('*', $permissions, true) || in_array($permission, $permissions, true);
     }
 
     public function messages(): array
@@ -34,6 +36,7 @@ abstract class FitControlRequest extends FormRequest
             'gt' => 'El campo :attribute debe ser mayor que :value.', 'gte' => 'El campo :attribute debe ser mayor o igual que :value.',
             'lte' => 'El campo :attribute debe ser menor o igual que :value.', 'decimal' => 'El campo :attribute debe tener una cantidad válida de decimales.',
             'uppercase' => 'El campo :attribute debe escribirse en mayúsculas.', 'regex' => 'El formato del campo :attribute no es válido.',
+            'alpha' => 'El campo :attribute solo debe contener letras.',
             'ip' => 'El campo :attribute debe contener una dirección IP válida.',
             'uuid' => 'El campo :attribute debe ser un UUID válido.', 'url' => 'El campo :attribute debe contener una URL válida.',
             'array' => 'El campo :attribute debe ser una lista válida.', 'confirmed' => 'La confirmación de :attribute no coincide.',

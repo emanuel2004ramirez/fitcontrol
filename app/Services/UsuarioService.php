@@ -19,6 +19,41 @@ class UsuarioService extends StoredProcedureService
         return $this->selectOne('sp_users_obtener_credenciales', [$login]);
     }
 
+    public function obtenerParaAutenticacion(int $id): ?object
+    {
+        return $this->selectOne('sp_auth_user_by_id', [$id]);
+    }
+
+    public function registrarLoginExitoso(int $id): bool
+    {
+        return $this->statement('sp_auth_login_exitoso', [$id]);
+    }
+
+    public function registrarLoginFallido(string $login): bool
+    {
+        return $this->statement('sp_auth_login_fallido', [$login]);
+    }
+
+    public function roles(int $id): array
+    {
+        return $this->select('sp_auth_user_roles', [$id]);
+    }
+
+    public function permisos(int $id): array
+    {
+        return $this->select('sp_auth_user_permissions', [$id]);
+    }
+
+    public function guardarRol(string $codigo, string $nombre, string $descripcion): ?object
+    {
+        return $this->selectOne('sp_auth_upsert_role', [$codigo, $nombre, $descripcion]);
+    }
+
+    public function guardarPermiso(array $permiso): ?object
+    {
+        return $this->selectOne('sp_auth_upsert_permission', [$permiso['codigo'], $permiso['nombre'], $permiso['modulo'], $permiso['descripcion']]);
+    }
+
     public function crear(array $data): ?object
     {
         return $this->selectOne('sp_users_crear', [$data['personal_id'] ?? null, $data['name'], $data['username'], $data['email'] ?? null, $data['password_hash'], $data['debe_cambiar_password'] ?? false]);

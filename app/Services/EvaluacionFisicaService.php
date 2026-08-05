@@ -2,8 +2,42 @@
 
 namespace App\Services;
 
+use Illuminate\Pagination\LengthAwarePaginator;
+
 class EvaluacionFisicaService extends StoredProcedureService
 {
+    public function paginar(array $f, int $per, int $page): LengthAwarePaginator
+    {
+        $p = [$f['texto'] ?? null, $f['cliente_id'] ?? null, $f['evaluador_id'] ?? null, $f['desde'] ?? null, $f['hasta'] ?? null];
+
+        return $this->paginateProcedures('sp_evaluaciones_contar', 'sp_evaluaciones_filtrar', $p, $per, $page, $f);
+    }
+
+    public function medidas(int $id): array
+    {
+        return $this->select('sp_evaluaciones_medidas', [$id]);
+    }
+
+    public function historialCliente(int $id): array
+    {
+        return $this->select('sp_evaluaciones_historial_cliente', [$id]);
+    }
+
+    public function comparar(int $base, int $comparada): array
+    {
+        return $this->select('sp_evaluaciones_comparar', [$base, $comparada]);
+    }
+
+    public function clientes(): array
+    {
+        return $this->select('sp_evaluaciones_clientes');
+    }
+
+    public function evaluadores(): array
+    {
+        return $this->select('sp_evaluaciones_evaluadores');
+    }
+
     public function listar(int $limite = 100, int $offset = 0): array
     {
         return $this->select('sp_evaluaciones_fisicas_listar', [$limite, $offset]);

@@ -9,9 +9,8 @@ class EjercicioService extends StoredProcedureService
     public function paginar(array $f, int $per, int $page): LengthAwarePaginator
     {
         $p = [$f['texto'] ?? null, $f['estado_id'] ?? null, $f['grupo_id'] ?? null, $f['patron'] ?? null, $f['equipamiento'] ?? null];
-        $total = (int) ($this->selectOne('sp_ejercicios_contar', $p)?->total ?? 0);
 
-        return new LengthAwarePaginator($this->select('sp_ejercicios_filtrar', [...$p, $per, ($page - 1) * $per]), $total, $per, $page, ['path' => LengthAwarePaginator::resolveCurrentPath(), 'query' => $f]);
+        return $this->paginateProcedures('sp_ejercicios_contar', 'sp_ejercicios_filtrar', $p, $per, $page, $f);
     }
 
     public function grupos(int $id): array

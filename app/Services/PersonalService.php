@@ -30,15 +30,8 @@ class PersonalService extends StoredProcedureService
             $filtros['fecha_desde'] ?? null,
             $filtros['fecha_hasta'] ?? null,
         ];
-        $total = (int) ($this->selectOne('sp_personal_contar', $parametros)?->total ?? 0);
-        $resultados = $this->select('sp_personal_filtrar', [
-            ...$parametros, $porPagina, ($pagina - 1) * $porPagina,
-        ]);
 
-        return new LengthAwarePaginator($resultados, $total, $porPagina, $pagina, [
-            'path' => LengthAwarePaginator::resolveCurrentPath(),
-            'query' => $filtros,
-        ]);
+        return $this->paginateProcedures('sp_personal_contar', 'sp_personal_filtrar', $parametros, $porPagina, $pagina, $filtros);
     }
 
     public function crear(array $data): ?object

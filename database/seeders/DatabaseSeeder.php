@@ -2,31 +2,26 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Artisan;
+use RuntimeException;
 
 class DatabaseSeeder extends Seeder
 {
-    use WithoutModelEvents;
-
-    /**
-     * Seed the application's database.
-     */
     public function run(): void
     {
-        User::query()->firstOrCreate(
-            ['username' => 'admin'],
-            [
-                'name' => 'Administrador',
-                'email' => 'test@example.com',
-                'password' => Hash::make('password'),
-                'email_verified_at' => now(),
-                'activo' => true,
-            ]
-        );
+        $exitCode = Artisan::call('fitcontrol:setup-access', ['--password' => '123456']);
+        if ($exitCode !== 0) {
+            throw new RuntimeException('No se pudo preparar la matriz de roles y permisos.');
+        }
 
-        $this->call(AuthorizationSeeder::class);
+        $this->call(DemoUserSeeder::class);
+        $this->call([
+            GeneralCatalogSeeder::class,
+            MembershipCatalogSeeder::class,
+            FinanceCatalogSeeder::class,
+            TrainingCatalogSeeder::class,
+            DemoEmployeeSeeder::class,
+        ]);
     }
 }

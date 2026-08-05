@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Auth\StoredProcedureUserProvider;
+use App\Listeners\RecordAuthenticationAudit;
 use App\Models\AplicacionPago;
 use App\Models\Asistencia;
 use App\Models\Auditoria;
@@ -61,8 +63,14 @@ use App\Policies\PagoPolicy;
 use App\Policies\PersonalPolicy;
 use App\Policies\RutinaPolicy;
 use App\Policies\UsuarioPolicy;
+use App\Services\UsuarioService;
 use App\Support\Authorization\FitControlPermissions;
+use Illuminate\Auth\Events\Failed;
+use Illuminate\Auth\Events\Login;
+use Illuminate\Auth\Events\Logout;
 use Illuminate\Pagination\Paginator;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
@@ -81,11 +89,15 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Auth::provider('stored-procedure', fn ($app): StoredProcedureUserProvider => new StoredProcedureUserProvider($app['hash'], $app->make(UsuarioService::class)));
         Paginator::useBootstrapFive();
-        Gate::before(fn (User $user) => $user->hasRole(FitControlPermissions::SUPER_ADMIN_ROLE) ? true : null);
+        Event::listen(Login::class, RecordAuthenticationAudit::class);
+        Event::listen(Logout::class, RecordAuthenticationAudit::class);
+        Event::listen(Failed::class, RecordAuthenticationAudit::class);
+        Gate::before(fn (User $user) => in_array('*', session('permissions', []), true) ? true : null);
 
         foreach (FitControlPermissions::all() as $permission) {
-            Gate::define($permission['codigo'], fn (User $user): bool => $user->hasPermissionTo($permission['codigo']));
+            Gate::define($permission['codigo'], fn (User $user): bool => in_array($permission['codigo'], session('permissions', []), true));
         }
 
         foreach ($this->policies() as $model => $policy) {

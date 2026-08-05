@@ -2,25 +2,49 @@
 
 namespace App\Services;
 
+use App\Support\Auditing\AuditTrail;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
 abstract class StoredProcedureService
 {
+    protected function paginateProcedures(string $countProcedure, string $listProcedure, array $parameters, int $perPage, int $page, array $query = []): LengthAwarePaginator
+    {
+        $page = max(1, $page);
+        $perPage = max(1, min(200, $perPage));
+        $total = (int) ($this->selectOne($countProcedure, $parameters)?->total ?? 0);
+        $items = $this->select($listProcedure, [...$parameters, $perPage, ($page - 1) * $perPage]);
+
+        return new LengthAwarePaginator($items, $total, $perPage, $page, [
+            'path' => LengthAwarePaginator::resolveCurrentPath(),
+            'query' => $query,
+        ]);
+    }
+
     /** @return array<int, object> */
     protected function select(string $procedure, array $parameters = []): array
     {
-        return DB::select($this->call($procedure, $parameters), $parameters);
+        $result = DB::select($this->call($procedure, $parameters), $parameters);
+        app(AuditTrail::class)->recordProcedure($procedure, $parameters, $result);
+
+        return $result;
     }
 
     protected function selectOne(string $procedure, array $parameters = []): ?object
     {
-        return DB::selectOne($this->call($procedure, $parameters), $parameters);
+        $result = DB::selectOne($this->call($procedure, $parameters), $parameters);
+        app(AuditTrail::class)->recordProcedure($procedure, $parameters, $result);
+
+        return $result;
     }
 
     protected function statement(string $procedure, array $parameters = []): bool
     {
-        return DB::statement($this->call($procedure, $parameters), $parameters);
+        $result = DB::statement($this->call($procedure, $parameters), $parameters);
+        app(AuditTrail::class)->recordProcedure($procedure, $parameters, $result);
+
+        return $result;
     }
 
     private function call(string $procedure, array $parameters): string

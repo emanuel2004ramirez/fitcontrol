@@ -24,10 +24,8 @@ class MembresiaService extends StoredProcedureService
     public function paginar(array $filtros, int $porPagina, int $pagina): LengthAwarePaginator
     {
         $params = [$filtros['texto'] ?? null, $filtros['estado_id'] ?? null, $filtros['tipo_id'] ?? null, $filtros['desde'] ?? null, $filtros['hasta'] ?? null];
-        $total = (int) ($this->selectOne('sp_membresias_contar', $params)?->total ?? 0);
-        $items = $this->select('sp_membresias_filtrar', [...$params, $porPagina, ($pagina - 1) * $porPagina]);
 
-        return new LengthAwarePaginator($items, $total, $porPagina, $pagina, ['path' => LengthAwarePaginator::resolveCurrentPath(), 'query' => $filtros]);
+        return $this->paginateProcedures('sp_membresias_contar', 'sp_membresias_filtrar', $params, $porPagina, $pagina, $filtros);
     }
 
     public function historial(int $id): array

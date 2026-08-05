@@ -93,6 +93,6 @@ class UsuarioController extends Controller
         $data = $request->validated();
         $this->service->retirarPermisoDeRol($data['rol_id'], $data['permiso_id']);
 
-        return back()->with('success','Permiso retirado correctamente.');
+        return back()->with('success', 'Permiso retirado correctamente.');
     }
 }

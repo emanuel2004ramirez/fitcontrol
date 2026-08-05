@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Asistencia\FilterAsistenciaRequest;
 use App\Http\Requests\Asistencia\RegistrarEntradaRequest;
 use App\Http\Requests\Asistencia\RegistrarSalidaRequest;
 use App\Services\AsistenciaService;
@@ -12,21 +13,23 @@ class AsistenciaController extends Controller
 {
     public function __construct(private readonly AsistenciaService $service) {}
 
-    public function index(): View
+    public function index(FilterAsistenciaRequest $r): View
     {
-        return view('asistencias.index', ['asistencias' => $this->service->listar()]);
+        $f = $r->validated();
+
+        return view('asistencias.index', ['asistencias' => $this->service->paginar($f, (int) ($f['por_pagina'] ?? 15), (int) ($f['page'] ?? 1)), 'resumen' => $this->service->resumen(), 'filtros' => $f]);
     }
 
     public function create(): View
     {
-        return view('asistencias.create');
+        return view('asistencias.create', ['clientes' => $this->service->clientesAcceso()]);
     }
 
-    public function store(RegistrarEntradaRequest $request): RedirectResponse
+    public function store(RegistrarEntradaRequest $r): RedirectResponse
     {
-        $this->service->registrarEntrada($request->validated());
+        $this->service->registrarEntrada([...$r->validated(), 'usuario_id' => $r->user()?->getAuthIdentifier()]);
 
-        return redirect()->route('asistencias.index')->with('success', 'Entrada registrada correctamente.');
+        return redirect()->route('asistencias.index')->with('success', 'Entrada registrada.');
     }
 
     public function show(int $asistencia): View
@@ -34,11 +37,10 @@ class AsistenciaController extends Controller
         return view('asistencias.show', ['asistencia' => $this->service->obtener($asistencia)]);
     }
 
-    public function registrarSalida(RegistrarSalidaRequest $request, int $asistencia): RedirectResponse
+    public function registrarSalida(RegistrarSalidaRequest $r, int $asistencia): RedirectResponse
     {
-        $data = $request->validated();
-        $this->service->registrarSalida($asistencia, $data['salida_at'] ?? null, $data['usuario_id'] ?? null);
+        $this->service->registrarSalida($asistencia, $r->validated('salida_at'), $r->user()?->getAuthIdentifier());
 
-        return back()->with('success', 'Salida registrada correctamente.');
+        return back()->with('success', 'Salida registrada.');
     }
 }

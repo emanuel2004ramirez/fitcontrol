@@ -9,9 +9,8 @@ class RutinaService extends StoredProcedureService
     public function paginar(array $f, int $per, int $page): LengthAwarePaginator
     {
         $p = [$f['texto'] ?? null, $f['cliente_id'] ?? null, $f['entrenador_id'] ?? null, $f['estado_id'] ?? null];
-        $total = (int) ($this->selectOne('sp_rutinas_contar', $p)?->total ?? 0);
 
-        return new LengthAwarePaginator($this->select('sp_rutinas_filtrar', [...$p, $per, ($page - 1) * $per]), $total, $per, $page, ['path' => LengthAwarePaginator::resolveCurrentPath(), 'query' => $f]);
+        return $this->paginateProcedures('sp_rutinas_contar', 'sp_rutinas_filtrar', $p, $per, $page, $f);
     }
 
     public function versiones(int $id): array
