@@ -29,9 +29,9 @@ class EvaluacionFisicaController extends Controller
 
     public function store(StoreEvaluacionFisicaRequest $r): RedirectResponse
     {
-        $e = $this->service->crear([...$r->validated(), 'usuario_id' => $r->user()?->getAuthIdentifier()]);
+        $e = $this->service->crearCompleta([...$r->validated(), 'usuario_id' => $r->user()?->getAuthIdentifier()]);
 
-        return redirect()->route('evaluaciones.show', $e->id)->with('success', 'Evaluación registrada.');
+        return redirect()->route('evaluaciones.show', $e->id)->with('success', 'Evaluación y medidas registradas correctamente.');
     }
 
     public function show(int $evaluacion): View
@@ -57,6 +57,6 @@ class EvaluacionFisicaController extends Controller
 
     private function opciones(): array
     {
-        return ['clientes' => $this->service->clientes(), 'evaluadores' => $this->service->evaluadores()];
+        return ['clientes' => $this->service->clientes(), 'evaluadores' => $this->service->evaluadores(), 'tiposMedida' => $this->catalogos->listar('tipos_medida')];
     }
 }

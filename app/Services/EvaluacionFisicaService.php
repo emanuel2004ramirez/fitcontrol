@@ -53,6 +53,11 @@ class EvaluacionFisicaService extends StoredProcedureService
         return $this->selectOne('sp_evaluaciones_crear', [$data['cliente_id'], $data['evaluador_id'], $data['evaluada_at'], $data['metodo'] ?? null, $data['observaciones'] ?? null, $data['usuario_id'] ?? null]);
     }
 
+    public function crearCompleta(array $data): ?object
+    {
+        return $this->selectOne('sp_evaluaciones_crear_completa', [$data['cliente_id'], $data['evaluador_id'], $data['evaluada_at'], $data['metodo'], $data['observaciones'] ?? null, $data['usuario_id'] ?? null, json_encode(array_values($data['medidas']), JSON_THROW_ON_ERROR)]);
+    }
+
     public function agregarMedida(array $data): bool
     {
         return $this->statement('sp_evaluaciones_agregar_medida', [$data['evaluacion_fisica_id'], $data['tipo_medida_id'], $data['valor'], $data['instrumento'] ?? null, $data['observaciones'] ?? null]);
