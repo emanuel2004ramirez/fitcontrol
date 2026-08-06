@@ -6,6 +6,7 @@ use App\Http\Requests\Personal\AsignarCargoPersonalRequest;
 use App\Http\Requests\Personal\CambiarEstadoPersonalRequest;
 use App\Http\Requests\Personal\DeletePersonalRequest;
 use App\Http\Requests\Personal\FilterPersonalRequest;
+use App\Http\Requests\Personal\StoreEvaluacionDesempenoPersonalRequest;
 use App\Http\Requests\Personal\StoreHorarioPersonalRequest;
 use App\Http\Requests\Personal\StorePersonalRequest;
 use App\Http\Requests\Personal\UpdatePersonalRequest;
@@ -52,6 +53,7 @@ class PersonalController extends Controller
             'historialCargos' => $this->service->historialCargos($personal),
             'historialEstados' => $this->service->historialEstados($personal),
             'horarios' => $this->service->horarios($personal),
+            'evaluacionesDesempeno' => $this->service->evaluacionesDesempeno($personal),
             ...$this->catalogosFormulario(),
         ]);
     }
@@ -103,6 +105,20 @@ class PersonalController extends Controller
         $this->service->eliminarHorario($horario);
 
         return back()->with('success', 'Horario finalizado correctamente.');
+    }
+
+    public function guardarEvaluacionDesempeno(StoreEvaluacionDesempenoPersonalRequest $request, int $personal): RedirectResponse
+    {
+        $this->service->guardarEvaluacionDesempeno($personal, [...$request->validated(), 'evaluador_id' => $request->user()?->getAuthIdentifier()]);
+
+        return back()->with('success', 'Evaluación de desempeño registrada correctamente.');
+    }
+
+    public function aprobarEvaluacionDesempeno(int $personal, int $evaluacion): RedirectResponse
+    {
+        $this->service->aprobarEvaluacionDesempeno($personal, $evaluacion, request()->user()?->getAuthIdentifier());
+
+        return back()->with('success', 'Evaluación aprobada correctamente.');
     }
 
     private function catalogosFormulario(): array

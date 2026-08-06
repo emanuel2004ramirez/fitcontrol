@@ -129,5 +129,7 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/{personal}/cargo', 'asignarCargo')->middleware('permission:personal.manage')->name('cargo')->whereNumber('personal');
         Route::post('/{personal}/horarios', 'guardarHorario')->middleware('permission:personal.manage')->name('horarios.store')->whereNumber('personal');
         Route::delete('/{personal}/horarios/{horario}', 'eliminarHorario')->middleware('permission:personal.manage')->name('horarios.destroy')->whereNumber(['personal', 'horario']);
+        Route::post('/{personal}/evaluaciones-desempeno', 'guardarEvaluacionDesempeno')->middleware('permission:personal.manage')->name('evaluaciones-desempeno.store')->whereNumber('personal');
+        Route::patch('/{personal}/evaluaciones-desempeno/{evaluacion}/aprobar', 'aprobarEvaluacionDesempeno')->middleware('permission:personal.manage')->name('evaluaciones-desempeno.aprobar')->whereNumber(['personal', 'evaluacion']);
     });
 });
