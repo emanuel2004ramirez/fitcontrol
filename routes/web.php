@@ -139,5 +139,6 @@ Route::middleware('auth')->group(function (): void {
         Route::resource('metodos-pago', \App\Http\Controllers\Catalogos\MetodoPagoController::class);
         Route::resource('cargos-personal', \App\Http\Controllers\Catalogos\CargoPersonalController::class);
         Route::resource('grupos-musculares', \App\Http\Controllers\Catalogos\GrupoMuscularController::class);
+        Route::resource('tipos-medida', \App\Http\Controllers\Catalogos\TipoMedidaController::class);
     });
 });

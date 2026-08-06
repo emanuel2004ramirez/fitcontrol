@@ -17,14 +17,14 @@
 
     $catalogos = [
         ['label' => 'Sexos', 'route' => 'catalogos.sexos.index'],
-        ['label' => 'Estados de Clientes', 'route' => 'catalogos.estados-cliente.index'],
+        ['label' => 'Estados de clientes', 'route' => 'catalogos.estados-clientes.index'],
         ['label' => 'Estados de membresías', 'route' => 'catalogos.estados-membresias.index'],
         ['label' => 'Estados de cobro/pago', 'route' => 'catalogos.estados-pagos.index'],
         ['label' => 'Métodos de pago', 'route' => 'catalogos.metodos-pago.index'],
         ['label' => 'Cargos del personal', 'route' => 'catalogos.cargos-personal.index'],
         ['label' => 'Grupos musculares', 'route' => 'catalogos.grupos-musculares.index'],
-        ['label' => 'Tipos de medidas físicas', 'route' => 'catalogos.tipos-medidas.index'],
-        ['label' => 'Tipos y precios de membresía', 'route' => 'catalogos.tipos-membresias.index'],
+        ['label' => 'Tipos de medidas físicas', 'route' => 'catalogos.tipos-medida.index'],
+        ['label' => 'Tipos y precios de membresía', 'route' => 'catalogos.tipos-membresia.index'],
     ];
 @endphp
 
