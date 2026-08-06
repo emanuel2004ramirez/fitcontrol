@@ -137,5 +137,6 @@ Route::middleware('auth')->group(function (): void {
         Route::resource('estados-membresias', \App\Http\Controllers\Catalogos\EstadoMembresiaController::class);
         Route::resource('estados-pagos', \App\Http\Controllers\Catalogos\EstadoPagoController::class);
         Route::resource('metodos-pago', \App\Http\Controllers\Catalogos\MetodoPagoController::class);
+        Route::resource('cargos-personal', \App\Http\Controllers\Catalogos\CargoPersonalController::class);
     });
 });
