@@ -8,7 +8,7 @@ class EjercicioService extends StoredProcedureService
 {
     public function paginar(array $f, int $per, int $page): LengthAwarePaginator
     {
-        $p = [$f['texto'] ?? null, $f['estado_id'] ?? null, $f['grupo_id'] ?? null, $f['patron'] ?? null, $f['equipamiento'] ?? null];
+        $p = [$f['texto'] ?? null, $f['estado_id'] ?? null, $f['grupo_id'] ?? null, $f['equipamiento_id'] ?? null];
 
         return $this->paginateProcedures('sp_ejercicios_contar', 'sp_ejercicios_filtrar', $p, $per, $page, $f);
     }
@@ -16,11 +16,6 @@ class EjercicioService extends StoredProcedureService
     public function grupos(int $id): array
     {
         return $this->select('sp_ejercicios_grupos', [$id]);
-    }
-
-    public function patrones(): array
-    {
-        return $this->select('sp_ejercicios_patrones');
     }
 
     public function retirarGrupoMuscular(int $ejercicio, int $grupo): bool
@@ -45,17 +40,19 @@ class EjercicioService extends StoredProcedureService
 
     public function crear(array $data): ?object
     {
-        return $this->selectOne('sp_ejercicios_crear', [null, $data['estado_ejercicio_id'], $data['nombre'], $data['patron_movimiento'] ?? null, $data['equipamiento'] ?? null, $data['descripcion'] ?? null, $data['instrucciones'] ?? null, $data['video_url'] ?? null]);
+        return $this->selectOne('sp_ejercicios_crear', [null, $data['nombre'], $data['grupo_muscular_id'], $data['descripcion'] ?? null, $data['instrucciones'] ?? null, $data['video_url'] ?? null]);
     }
 
     public function actualizar(int $id, array $data): bool
     {
-        return $this->statement('sp_ejercicios_actualizar', [$id, $data['estado_ejercicio_id'], $data['nombre'], $data['patron_movimiento'] ?? null, $data['equipamiento'] ?? null, $data['descripcion'] ?? null, $data['instrucciones'] ?? null, $data['video_url'] ?? null]);
+        return $this->statement('sp_ejercicios_actualizar', [$id, $data['estado_ejercicio_id'], $data['nombre'], $data['grupo_muscular_id'], $data['descripcion'] ?? null, $data['instrucciones'] ?? null, $data['video_url'] ?? null]);
     }
 
-    public function asignarGrupoMuscular(int $ejercicioId, int $grupoId, bool $principal = false): bool
+    public function sincronizarEquipamientos(int $ejercicioId, array $ids): void { \App\Models\Ejercicio::query()->findOrFail($ejercicioId)->equipamientos()->sync(array_unique($ids)); }
+
+    public function asignarGrupoMuscular(int $ejercicioId, int $grupoId): bool
     {
-        return $this->statement('sp_ejercicios_asignar_grupo', [$ejercicioId, $grupoId, $principal]);
+        return $this->statement('sp_ejercicios_asignar_grupo', [$ejercicioId, $grupoId]);
     }
 
     public function eliminar(int $id): bool

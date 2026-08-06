@@ -23,9 +23,10 @@ class InstallEjercicioProcedures extends Command
             if (($s = trim($s)) !== '') {
                 DB::unprepared($s);
             }
-        }$r = DB::selectOne('CALL sp_ejercicios_contar(?, ?, ?, ?, ?)', [null, null, null, null, null]);
+        }$r = DB::selectOne('CALL sp_ejercicios_contar(?, ?, ?, ?)', [null, null, null, null]);
         $this->components->info("Procedimientos instalados. Ejercicios: {$r->total}.");
 
         return self::SUCCESS;
     }
 }
+

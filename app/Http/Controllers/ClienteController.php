@@ -23,7 +23,6 @@ class ClienteController extends Controller
     public function index(FilterClienteRequest $request): View
     {
         $filtros = $request->validated();
-
         return view('clientes.index', ['clientes' => $this->service->paginar($filtros, (int) ($filtros['por_pagina'] ?? 15), (int) ($filtros['page'] ?? 1)), 'filtros' => $filtros, ...$this->catalogosFormulario()]);
     }
 
@@ -115,4 +114,5 @@ class ClienteController extends Controller
     {
         return ['estados' => $this->catalogos->listar('estados_cliente'), 'sexos' => $this->catalogos->listar('sexos')];
     }
+
 }
