@@ -155,4 +155,16 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/{personal}/evaluaciones-desempeno', 'guardarEvaluacionDesempeno')->middleware('permission:personal.manage')->name('evaluaciones-desempeno.store')->whereNumber('personal');
         Route::patch('/{personal}/evaluaciones-desempeno/{evaluacion}/aprobar', 'aprobarEvaluacionDesempeno')->middleware('permission:personal.manage')->name('evaluaciones-desempeno.aprobar')->whereNumber(['personal', 'evaluacion']);
     });
+
+    Route::prefix('catalogos')->name('catalogos.')->middleware('permission:*')->group(function (): void {
+        Route::resource('sexos', \App\Http\Controllers\Catalogos\SexoController::class)->only(['index', 'store', 'update', 'destroy']);
+        Route::resource('estados-cliente', \App\Http\Controllers\Catalogos\EstadoClienteController::class)->only(['index', 'store', 'update', 'destroy']);
+        Route::resource('estados-membresias', \App\Http\Controllers\Catalogos\EstadoMembresiaController::class);
+        Route::resource('estados-pagos', \App\Http\Controllers\Catalogos\EstadoPagoController::class);
+        Route::resource('metodos-pago', \App\Http\Controllers\Catalogos\MetodoPagoController::class);
+        Route::resource('cargos-personal', \App\Http\Controllers\Catalogos\CargoPersonalController::class);
+        Route::resource('grupos-musculares', \App\Http\Controllers\Catalogos\GrupoMuscularController::class);
+        Route::resource('tipos-medida', \App\Http\Controllers\Catalogos\TipoMedidaController::class);
+        Route::resource('tipos-membresia', \App\Http\Controllers\Catalogos\TipoMembresiaController::class);
+    });
 });
