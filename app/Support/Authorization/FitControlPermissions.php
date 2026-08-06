@@ -26,6 +26,9 @@ use App\Http\Requests\Entrenamiento\StoreSerieRealizadaRequest;
 use App\Http\Requests\Evaluacion\StoreEvaluacionFisicaRequest;
 use App\Http\Requests\Evaluacion\StoreMedidaEvaluacionRequest;
 use App\Http\Requests\Membresia\CambiarEstadoMembresiaRequest;
+use App\Http\Requests\Membresia\ConfigurarFamiliaRequest;
+use App\Http\Requests\Membresia\AgregarBeneficiarioRequest;
+use App\Http\Requests\Membresia\RetirarBeneficiarioRequest;
 use App\Http\Requests\Membresia\CancelarMembresiaRequest;
 use App\Http\Requests\Membresia\CongelarMembresiaRequest;
 use App\Http\Requests\Membresia\ReactivarMembresiaRequest;
@@ -97,7 +100,7 @@ final class FitControlPermissions
         DeleteClienteRequest::class => 'clientes.delete',
         StoreContactoEmergenciaRequest::class => 'clientes.manage',
         StoreConsentimientoRequest::class => 'clientes.manage',
-        StoreDatosMedicosRequest::class => 'clientes.manage',
+        StoreDatosMedicosRequest::class => 'clientes.medical',
         StorePersonalRequest::class => 'personal.create',
         UpdatePersonalRequest::class => 'personal.update',
         CambiarEstadoPersonalRequest::class => 'personal.changeStatus',
@@ -117,6 +120,9 @@ final class FitControlPermissions
         RenovarMembresiaRequest::class => 'membresias.manage',
         CongelarMembresiaRequest::class => 'membresias.manage',
         ReactivarMembresiaRequest::class => 'membresias.manage',
+        ConfigurarFamiliaRequest::class => 'membresias.manage',
+        AgregarBeneficiarioRequest::class => 'membresias.manage',
+        RetirarBeneficiarioRequest::class => 'membresias.manage',
         StoreCargoCobroRequest::class => 'pagos.create',
         StorePagoRequest::class => 'pagos.create',
         AplicarPagoRequest::class => 'pagos.manage',
@@ -162,6 +168,7 @@ final class FitControlPermissions
             }
         }
 
+        $permissions[] = ['codigo' => 'clientes.medical', 'nombre' => 'Consultar datos médicos', 'modulo' => 'clientes', 'descripcion' => 'Permite consultar y modificar información médica confidencial.'];
         return $permissions;
     }
 

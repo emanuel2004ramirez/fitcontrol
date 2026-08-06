@@ -53,6 +53,21 @@ class ClienteService extends StoredProcedureService
         return $this->selectOne('sp_clientes_crear', [null, $data['sexo_id'] ?? null, $data['estado_cliente_id'], $data['nombre'], $data['apellido'], $data['tipo_identificacion'] ?? null, $data['numero_identificacion'] ?? null, $data['telefono'] ?? null, $data['correo_electronico'] ?? null, $data['direccion'] ?? null, $data['ciudad'] ?? null, $data['pais'] ?? null, $data['fecha_nacimiento'] ?? null, $data['creado_por'] ?? null]);
     }
 
+    public function crearExpediente(array $data, ?int $usuarioId, ?string $ip): ?object
+    {
+        return $this->selectOne('sp_clientes_crear_expediente', [json_encode($data, JSON_THROW_ON_ERROR), $usuarioId, $ip]);
+    }
+
+    public function lineaTiempo(int $clienteId): array
+    {
+        return $this->select('sp_clientes_linea_tiempo', [$clienteId]);
+    }
+
+    public function registrarEvento(int $clienteId, string $tipo, string $titulo, ?string $descripcion, ?string $entidad, ?int $entidadId, ?int $usuarioId): bool
+    {
+        return $this->statement('sp_eventos_cliente_registrar', [$clienteId, $tipo, $titulo, $descripcion, $entidad, $entidadId, $usuarioId]);
+    }
+
     public function actualizar(int $id, array $data): ?object
     {
         return $this->selectOne('sp_clientes_actualizar', [$id, $data['sexo_id'] ?? null, $data['nombre'], $data['apellido'], $data['tipo_identificacion'] ?? null, $data['numero_identificacion'] ?? null, $data['telefono'] ?? null, $data['correo_electronico'] ?? null, $data['direccion'] ?? null, $data['ciudad'] ?? null, $data['pais'] ?? null, $data['fecha_nacimiento'] ?? null]);
@@ -70,7 +85,12 @@ class ClienteService extends StoredProcedureService
 
     public function guardarContactoEmergencia(array $data): ?object
     {
-        return $this->selectOne('sp_contactos_emergencia_guardar', [$data['id'] ?? null, $data['cliente_id'], $data['nombre_completo'], $data['parentesco'], $data['telefono'], $data['es_principal'] ?? false]);
+        $contacto = $this->selectOne('sp_contactos_emergencia_guardar', [$data['id'] ?? null, $data['cliente_id'], $data['nombre_completo'], $data['parentesco'], $data['telefono'], $data['es_principal'] ?? false]);
+        if ($contacto !== null) {
+            $this->registrarEvento((int) $data['cliente_id'], 'CONTACTO_AGREGADO', 'Contacto de emergencia guardado', $contacto->nombre_completo, 'contactos_emergencia', (int) $contacto->id, $data['usuario_id'] ?? null);
+        }
+
+        return $contacto;
     }
 
     public function eliminarContactoEmergencia(int $clienteId, int $id): bool
@@ -80,11 +100,21 @@ class ClienteService extends StoredProcedureService
 
     public function registrarConsentimiento(array $data): bool
     {
-        return $this->statement('sp_consentimientos_cliente_registrar', [$data['cliente_id'], $data['tipo'], $data['version_documento'], $data['aceptado'], $data['ip'] ?? null, $data['usuario_id'] ?? null]);
+        $registrado = $this->statement('sp_consentimientos_cliente_registrar', [$data['cliente_id'], $data['tipo'], $data['version_documento'], $data['aceptado'], $data['ip'] ?? null, $data['usuario_id'] ?? null]);
+        if ($registrado) {
+            $this->registrarEvento((int) $data['cliente_id'], $data['aceptado'] ? 'CONSENTIMIENTO_ACEPTADO' : 'CONSENTIMIENTO_RECHAZADO', 'Consentimiento registrado', $data['tipo'].' · versión '.$data['version_documento'], 'consentimientos_cliente', null, $data['usuario_id'] ?? null);
+        }
+
+        return $registrado;
     }
 
     public function guardarDatosMedicos(array $data): bool
     {
-        return $this->statement('sp_datos_medicos_cliente_guardar', [$data['cliente_id'], $data['condiciones_medicas'] ?? null, $data['alergias'] ?? null, $data['medicamentos'] ?? null, $data['restricciones_ejercicio'] ?? null, $data['contacto_medico'] ?? null, $data['usuario_id'] ?? null]);
+        $guardado = $this->statement('sp_datos_medicos_cliente_guardar', [$data['cliente_id'], $data['condiciones_medicas'] ?? null, $data['alergias'] ?? null, $data['medicamentos'] ?? null, $data['restricciones_ejercicio'] ?? null, $data['contacto_medico'] ?? null, $data['usuario_id'] ?? null]);
+        if ($guardado) {
+            $this->registrarEvento((int) $data['cliente_id'], 'EXPEDIENTE_MEDICO_ACTUALIZADO', 'Expediente médico actualizado', 'Contenido protegido por confidencialidad', 'datos_medicos_cliente', null, $data['usuario_id'] ?? null);
+        }
+
+        return $guardado;
     }
 }

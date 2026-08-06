@@ -34,8 +34,12 @@ class ClienteController extends Controller
 
     public function store(StoreClienteRequest $request): RedirectResponse
     {
-        $cliente = $this->service->crear([...$request->validated(), 'creado_por' => $request->user()?->getAuthIdentifier()]);
+        $usuarioId = $request->user()?->getAuthIdentifier();
+        $cliente = $this->service->crearExpediente($request->validated(), $usuarioId, $request->ip());
         $enviado = $cliente !== null && $this->correo->enviarBienvenida($cliente);
+        if ($cliente !== null) {
+            $this->service->registrarEvento((int) $cliente->id, $enviado ? 'CORREO_ENVIADO' : 'CORREO_FALLIDO', $enviado ? 'Correo de bienvenida enviado' : 'Falló el correo de bienvenida', $cliente->correo_electronico, 'clientes', (int) $cliente->id, $usuarioId);
+        }
 
         $redirect = redirect()->route('clientes.index')->with('success', 'Cliente registrado correctamente.');
 
@@ -46,7 +50,10 @@ class ClienteController extends Controller
 
     public function show(int $cliente): View
     {
-        return view('clientes.show', ['cliente' => $this->service->obtener($cliente), 'contactos' => $this->service->contactosEmergencia($cliente), 'datosMedicos' => $this->service->datosMedicos($cliente), 'consentimientos' => $this->service->consentimientos($cliente), 'historialEstados' => $this->service->historialEstados($cliente), ...$this->catalogosFormulario()]);
+        $permissions = session('permissions', []);
+        $puedeVerDatosMedicos = in_array('*', $permissions, true) || in_array('clientes.medical', $permissions, true);
+
+        return view('clientes.show', ['cliente' => $this->service->obtener($cliente), 'contactos' => $this->service->contactosEmergencia($cliente), 'datosMedicos' => $puedeVerDatosMedicos ? $this->service->datosMedicos($cliente) : null, 'consentimientos' => $this->service->consentimientos($cliente), 'historialEstados' => $this->service->historialEstados($cliente), 'lineaTiempo' => $this->service->lineaTiempo($cliente), ...$this->catalogosFormulario()]);
     }
 
     public function edit(int $cliente): View
@@ -78,7 +85,7 @@ class ClienteController extends Controller
 
     public function guardarContacto(StoreContactoEmergenciaRequest $request, int $cliente): RedirectResponse
     {
-        $this->service->guardarContactoEmergencia([...$request->validated(), 'cliente_id' => $cliente]);
+        $this->service->guardarContactoEmergencia([...$request->validated(), 'cliente_id' => $cliente, 'usuario_id' => $request->user()?->getAuthIdentifier()]);
 
         return back()->with('success', 'Contacto guardado correctamente.');
     }

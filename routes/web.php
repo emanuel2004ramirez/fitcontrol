@@ -95,11 +95,15 @@ Route::middleware('auth')->group(function (): void {
         Route::get('/crear', 'create')->middleware('permission:membresias.create')->name('create');
         Route::post('/', 'store')->middleware('permission:membresias.create')->name('store');
         Route::get('/{membresia}', 'show')->middleware('permission:membresias.view')->name('show')->whereNumber('membresia');
+        Route::get('/{membresia}/contrato', 'contratoPdf')->middleware('permission:membresias.view')->name('contrato')->whereNumber('membresia');
         Route::patch('/{membresia}/estado', 'cambiarEstado')->middleware('permission:membresias.changeStatus')->name('estado')->whereNumber('membresia');
         Route::post('/{membresia}/renovar', 'renovar')->middleware('permission:membresias.manage')->name('renovar')->whereNumber('membresia');
         Route::post('/{membresia}/congelar', 'congelar')->middleware('permission:membresias.manage')->name('congelar')->whereNumber('membresia');
         Route::post('/{membresia}/reactivar', 'reactivar')->middleware('permission:membresias.manage')->name('reactivar')->whereNumber('membresia');
         Route::post('/{membresia}/cancelar', 'cancelar')->middleware('permission:membresias.changeStatus')->name('cancelar')->whereNumber('membresia');
+        Route::post('/{membresia}/familia', 'configurarFamilia')->middleware('permission:membresias.manage')->name('familia')->whereNumber('membresia');
+        Route::post('/{membresia}/beneficiarios', 'agregarBeneficiario')->middleware('permission:membresias.manage')->name('beneficiarios.store')->whereNumber('membresia');
+        Route::delete('/{membresia}/beneficiarios/{beneficiario}', 'retirarBeneficiario')->middleware('permission:membresias.manage')->name('beneficiarios.destroy')->whereNumber(['membresia','beneficiario']);
     });
 
     Route::prefix('clientes')->name('clientes.')->controller(ClienteController::class)->group(function (): void {
