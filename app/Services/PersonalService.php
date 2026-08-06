@@ -64,6 +64,11 @@ class PersonalService extends StoredProcedureService
         return $this->select('sp_personal_horarios', [$id]);
     }
 
+    public function evaluacionesDesempeno(int $id): array
+    {
+        return $this->select('sp_personal_evaluaciones_desempeno', [$id]);
+    }
+
     public function cambiarEstado(int $id, int $estadoId, ?string $motivo, ?int $usuarioId): bool
     {
         return $this->statement('sp_personal_cambiar_estado', [$id, $estadoId, $motivo, $usuarioId]);
@@ -82,5 +87,27 @@ class PersonalService extends StoredProcedureService
     public function eliminarHorario(int $id): bool
     {
         return $this->statement('sp_horarios_personal_eliminar', [$id]);
+    }
+
+    public function guardarEvaluacionDesempeno(int $personalId, array $data): ?object
+    {
+        return $this->selectOne('sp_personal_evaluacion_desempeno_crear', [
+            $personalId,
+            $data['periodo_inicio'],
+            $data['periodo_fin'],
+            $data['fecha_evaluacion'],
+            $data['puntualidad'],
+            $data['responsabilidad'],
+            $data['atencion_cliente'],
+            $data['trabajo_equipo'],
+            $data['rendimiento'],
+            $data['comentarios'] ?? null,
+            $data['evaluador_id'] ?? null,
+        ]);
+    }
+
+    public function aprobarEvaluacionDesempeno(int $personalId, int $evaluacionId, ?int $usuarioId): bool
+    {
+        return $this->statement('sp_personal_evaluacion_desempeno_aprobar', [$personalId, $evaluacionId, $usuarioId]);
     }
 }
