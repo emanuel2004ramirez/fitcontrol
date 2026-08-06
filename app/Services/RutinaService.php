@@ -47,6 +47,8 @@ class RutinaService extends StoredProcedureService
     {
         return $this->statement('sp_rutinas_eliminar_ejercicio', [$id]);
     }
+    public function actualizarEjercicio(int $id, array $d): bool { return $this->statement('sp_rutinas_actualizar_ejercicio', [$id,$d['series']??null,$d['repeticiones_min']??null,$d['repeticiones_max']??null,$d['peso']??null,$d['descanso_segundos']??null,$d['indicaciones']??null]); }
+    public function reordenarEjercicios(array $ids): bool { return $this->statement('sp_rutinas_reordenar_ejercicios', [json_encode(array_values($ids), JSON_THROW_ON_ERROR)]); }
 
     public function clientes(): array
     {

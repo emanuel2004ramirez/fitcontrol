@@ -11,6 +11,12 @@ class TrainingCatalogSeeder extends Seeder
 
     public function run(): void
     {
+        \App\Models\Equipamiento::upsert([
+            ['codigo' => 'BARRA', 'nombre' => 'Barra', 'activo' => true], ['codigo' => 'MANCUERNA', 'nombre' => 'Mancuerna', 'activo' => true],
+            ['codigo' => 'MAQUINA', 'nombre' => 'Máquina', 'activo' => true], ['codigo' => 'POLEA', 'nombre' => 'Polea', 'activo' => true],
+            ['codigo' => 'BANCO', 'nombre' => 'Banco', 'activo' => true], ['codigo' => 'PESO_CORPORAL', 'nombre' => 'Peso corporal', 'activo' => true],
+            ['codigo' => 'BANDA_ELASTICA', 'nombre' => 'Banda elástica', 'activo' => true], ['codigo' => 'TRX', 'nombre' => 'TRX', 'activo' => true], ['codigo' => 'KETTLEBELL', 'nombre' => 'Kettlebell', 'activo' => true],
+        ], ['codigo'], ['nombre', 'activo']);
         $this->seedCatalog('objetivos', [
             ['codigo' => 'PERDIDA_PESO', 'nombre' => 'Pérdida de peso', 'descripcion' => 'Reducir grasa corporal.', 'activo' => true],
             ['codigo' => 'GANANCIA_MUSCULAR', 'nombre' => 'Ganancia muscular', 'descripcion' => 'Incrementar masa muscular.', 'activo' => true],

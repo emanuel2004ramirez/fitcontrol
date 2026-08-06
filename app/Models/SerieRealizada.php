@@ -9,11 +9,11 @@ class SerieRealizada extends Model
 {
     protected $table = 'series_realizadas';
 
-    protected $fillable = ['entrenamiento_realizado_id', 'ejercicio_rutina_id', 'ejercicio_id', 'numero_serie', 'repeticiones', 'peso', 'duracion_segundos', 'distancia', 'rpe', 'notas'];
+    protected $fillable = ['entrenamiento_realizado_id', 'ejercicio_rutina_id', 'ejercicio_id', 'numero_serie', 'repeticiones', 'peso', 'duracion_segundos', 'distancia', 'notas'];
 
     protected function casts(): array
     {
-        return ['numero_serie' => 'integer', 'repeticiones' => 'integer', 'peso' => 'decimal:2', 'duracion_segundos' => 'integer', 'distancia' => 'decimal:2', 'rpe' => 'decimal:1'];
+        return ['numero_serie' => 'integer', 'repeticiones' => 'integer', 'peso' => 'decimal:2', 'duracion_segundos' => 'integer', 'distancia' => 'decimal:2'];
     }
 
     public function entrenamiento(): BelongsTo

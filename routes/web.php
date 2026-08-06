@@ -54,6 +54,8 @@ Route::middleware('auth')->group(function (): void {
 
     Route::prefix('rutinas')->name('rutinas.')->controller(RutinaController::class)->group(function (): void {
         Route::get('/', 'index')->middleware('permission:rutinas.viewAny')->name('index');
+        Route::get('/planificador', 'planificador')->middleware('permission:rutinas.viewAny')->name('planificador');
+        Route::post('/planificador', 'guardarPlanificador')->middleware('permission:rutinas.manage')->name('planificador.guardar');
         Route::get('/crear', 'create')->middleware('permission:rutinas.create')->name('create');
         Route::post('/', 'store')->middleware('permission:rutinas.create')->name('store');
         Route::get('/{rutina}', 'show')->middleware('permission:rutinas.view')->name('show')->whereNumber('rutina');
@@ -65,6 +67,11 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/{rutina}/sesiones', 'agregarSesion')->middleware('permission:rutinas.manage')->name('sesiones.store');
         Route::delete('/{rutina}/sesiones/{sesion}', 'eliminarSesion')->middleware('permission:rutinas.manage')->name('sesiones.destroy');
         Route::post('/{rutina}/ejercicios', 'agregarEjercicio')->middleware('permission:rutinas.manage')->name('ejercicios.store');
+        Route::post('/{rutina}/ejercicios/lote', 'agregarEjercicios')->middleware('permission:rutinas.manage')->name('ejercicios.batch');
+        Route::get('/{rutina}/ejecutar', 'ejecutar')->middleware('permission:rutinas.manage')->name('ejecutar');
+        Route::post('/{rutina}/ejecutar', 'guardarEjecucion')->middleware('permission:rutinas.manage')->name('ejecutar.guardar');
+        Route::put('/{rutina}/ejercicios/orden', 'reordenarEjercicios')->middleware('permission:rutinas.manage')->name('ejercicios.order');
+        Route::put('/{rutina}/ejercicios/{detalle}', 'actualizarEjercicio')->middleware('permission:rutinas.manage')->name('ejercicios.update');
         Route::delete('/{rutina}/ejercicios/{detalle}', 'eliminarEjercicio')->middleware('permission:rutinas.manage')->name('ejercicios.destroy');
     });
 

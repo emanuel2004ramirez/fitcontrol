@@ -11,11 +11,11 @@ class EjercicioRutina extends Model
 {
     protected $table = 'ejercicios_rutina';
 
-    protected $fillable = ['sesion_rutina_id', 'ejercicio_id', 'orden', 'series', 'repeticiones_min', 'repeticiones_max', 'duracion_segundos', 'distancia', 'peso', 'descanso_segundos', 'rpe', 'rir', 'tempo', 'indicaciones'];
+    protected $fillable = ['sesion_rutina_id', 'ejercicio_id', 'orden', 'series', 'repeticiones_min', 'repeticiones_max', 'peso', 'descanso_segundos', 'indicaciones'];
 
     protected function casts(): array
     {
-        return ['orden' => 'integer', 'series' => 'integer', 'repeticiones_min' => 'integer', 'repeticiones_max' => 'integer', 'duracion_segundos' => 'integer', 'distancia' => 'decimal:2', 'peso' => 'decimal:2', 'descanso_segundos' => 'integer', 'rpe' => 'decimal:1', 'rir' => 'integer'];
+        return ['orden' => 'integer', 'series' => 'integer', 'repeticiones_min' => 'integer', 'repeticiones_max' => 'integer', 'peso' => 'decimal:2', 'descanso_segundos' => 'integer'];
     }
 
     public function scopeOrdenados(Builder $query): Builder
