@@ -133,5 +133,6 @@ Route::middleware('auth')->group(function (): void {
 
     Route::prefix('catalogos')->name('catalogos.')->middleware('permission:*')->group(function (): void {
         Route::resource('sexos', \App\Http\Controllers\Catalogos\SexoController::class)->only(['index', 'store', 'update', 'destroy']);
+        Route::resource('estados-cliente', \App\Http\Controllers\Catalogos\EstadoClienteController::class)->only(['index', 'store', 'update', 'destroy']);
     });
 });

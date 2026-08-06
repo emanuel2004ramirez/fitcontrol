@@ -5,15 +5,18 @@ namespace App\Http\Controllers\Catalogos;
 use App\Http\Controllers\Controller;
 use App\Services\Catalogos\SexoService;
 use App\Http\Requests\Catalogos\SexoRequest;
+use Illuminate\Http\Request;
 
 class SexoController extends Controller
 {
     public function __construct(private SexoService $sexoService) {}
 
-    public function index()
+    public function index(Request $request)
     {
-        $sexos = $this->sexoService->obtenerTodos();
-        return view('catalogos.sexos.index', compact('sexos'));
+        $buscar = (string) $request->input('buscar');
+        $sexos = $this->sexoService->obtenerTodos($buscar);
+        
+        return view('catalogos.sexos.index', compact('sexos', 'buscar'));
     }
 
     public function store(SexoRequest $request)
