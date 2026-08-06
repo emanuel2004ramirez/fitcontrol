@@ -130,4 +130,8 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/{personal}/horarios', 'guardarHorario')->middleware('permission:personal.manage')->name('horarios.store')->whereNumber('personal');
         Route::delete('/{personal}/horarios/{horario}', 'eliminarHorario')->middleware('permission:personal.manage')->name('horarios.destroy')->whereNumber(['personal', 'horario']);
     });
+
+    Route::prefix('catalogos')->name('catalogos.')->middleware('role:super-admin')->group(function (): void {
+        Route::resource('sexos', \App\Http\Controllers\SexoController::class)->only(['index', 'store', 'update', 'destroy']);
+    });
 });
