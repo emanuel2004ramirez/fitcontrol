@@ -12,6 +12,7 @@ use App\Http\Controllers\PagoController;
 use App\Http\Controllers\PersonalController;
 use App\Http\Controllers\ReporteController;
 use App\Http\Controllers\RutinaController;
+use App\Http\Controllers\UsuarioController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function (): void {
@@ -22,6 +23,17 @@ Route::middleware('guest')->group(function (): void {
 Route::middleware('auth')->group(function (): void {
     Route::redirect('/', '/dashboard');
     Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
+
+    Route::prefix('usuarios')->name('usuarios.')->controller(UsuarioController::class)->group(function (): void {
+        Route::get('/', 'index')->middleware('permission:usuarios.viewAny')->name('index');
+        Route::get('/crear', 'create')->middleware('permission:usuarios.create')->name('create');
+        Route::post('/', 'store')->middleware('permission:usuarios.create')->name('store');
+        Route::get('/{usuario}', 'show')->middleware('permission:usuarios.view')->name('show')->whereNumber('usuario');
+        Route::put('/{usuario}/password', 'cambiarPassword')->middleware('permission:usuarios.manage')->name('password')->whereNumber('usuario');
+        Route::post('/{usuario}/roles', 'asignarRol')->middleware('permission:usuarios.manage')->name('roles.store')->whereNumber('usuario');
+        Route::delete('/{usuario}/roles', 'retirarRol')->middleware('permission:usuarios.manage')->name('roles.destroy')->whereNumber('usuario');
+        Route::delete('/{usuario}', 'destroy')->middleware('permission:usuarios.delete')->name('destroy')->whereNumber('usuario');
+    });
 
     Route::prefix('auditoria')->name('auditoria.')->controller(AuditoriaController::class)->group(function (): void {
         Route::get('/', 'index')->middleware('permission:auditoria.viewAny')->name('index');

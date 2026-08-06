@@ -10,6 +10,7 @@
         ['label' => 'Evaluaciones', 'icon' => 'bi-activity', 'permission' => 'evaluaciones.viewAny', 'route' => 'evaluaciones.index'],
         ['label' => 'Ejercicios', 'icon' => 'bi-person-arms-up', 'permission' => 'ejercicios.viewAny', 'route' => 'ejercicios.index'],
         ['label' => 'Personal', 'icon' => 'bi-person-badge', 'permission' => 'personal.viewAny', 'route' => 'personal.index'],
+        ['label' => 'Usuarios', 'icon' => 'bi-person-lock', 'permission' => 'usuarios.viewAny', 'route' => 'usuarios.index'],
         ['label' => 'Reportes', 'icon' => 'bi-bar-chart-line', 'permission' => 'reportes.viewAny', 'route' => 'reportes.index'],
         ['label' => 'Auditoría', 'icon' => 'bi-shield-lock', 'permission' => 'auditoria.viewAny', 'route' => 'auditoria.index'],
     ];

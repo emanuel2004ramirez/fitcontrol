@@ -8,12 +8,14 @@ use App\Http\Requests\Usuario\CambiarPasswordRequest;
 use App\Http\Requests\Usuario\StoreUsuarioRequest;
 use App\Http\Requests\Usuario\UpdateUsuarioRequest;
 use App\Services\UsuarioService;
+use App\Services\CatalogoService;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\View\View;
 
 class UsuarioController extends Controller
 {
-    public function __construct(private readonly UsuarioService $service) {}
+    public function __construct(private readonly UsuarioService $service, private readonly CatalogoService $catalogos) {}
 
     public function index(): View
     {
@@ -22,19 +24,21 @@ class UsuarioController extends Controller
 
     public function create(): View
     {
-        return view('usuarios.create');
+        return view('usuarios.create', ['personal' => $this->service->personalDisponible(), 'roles' => $this->catalogos->listar('roles')]);
     }
 
     public function store(StoreUsuarioRequest $request): RedirectResponse
     {
-        $this->service->crear($request->validated());
+        $data = $request->validated();
+        $data['password_hash'] = Hash::make($data['password']);
+        $this->service->crear($data);
 
         return redirect()->route('usuarios.index')->with('success', 'Usuario creado correctamente.');
     }
 
     public function show(int $usuario): View
     {
-        return view('usuarios.show', ['usuario' => $this->service->obtener($usuario)]);
+        return view('usuarios.show', ['usuario' => $this->service->obtener($usuario), 'rolesUsuario' => $this->service->roles($usuario), 'roles' => $this->catalogos->listar('roles')]);
     }
 
     public function edit(int $usuario): View
@@ -59,7 +63,7 @@ class UsuarioController extends Controller
     public function cambiarPassword(CambiarPasswordRequest $request, int $usuario): RedirectResponse
     {
         $data = $request->validated();
-        $this->service->cambiarPassword($usuario, $data['password_hash'], $data['debe_cambiar_password'] ?? false);
+        $this->service->cambiarPassword($usuario, Hash::make($data['password']), $data['debe_cambiar_password'] ?? false);
 
         return back()->with('success', 'Contraseña actualizada correctamente.');
     }

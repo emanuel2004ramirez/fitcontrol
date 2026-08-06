@@ -6,7 +6,12 @@ class UsuarioService extends StoredProcedureService
 {
     public function listar(int $limite = 100, int $offset = 0): array
     {
-        return $this->select('sp_users_listar', [$limite, $offset]);
+        return $this->select('sp_users_admin_listar');
+    }
+
+    public function personalDisponible(?int $usuarioId = null): array
+    {
+        return $this->select('sp_users_personal_disponible', [$usuarioId]);
     }
 
     public function obtener(int $id): ?object
@@ -61,7 +66,7 @@ class UsuarioService extends StoredProcedureService
 
     public function crear(array $data): ?object
     {
-        return $this->selectOne('sp_users_crear', [$data['personal_id'] ?? null, $data['name'], $data['username'], $data['email'] ?? null, $data['password_hash'], $data['debe_cambiar_password'] ?? false]);
+        return $this->selectOne('sp_users_crear_con_rol', [$data['personal_id'] ?? null, $data['name'], $data['username'], $data['email'] ?? null, $data['password_hash'], $data['debe_cambiar_password'] ?? true, $data['rol_id']]);
     }
 
     public function actualizar(int $id, array $data): bool

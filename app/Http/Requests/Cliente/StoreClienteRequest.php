@@ -11,7 +11,12 @@ class StoreClienteRequest extends FitControlRequest
             'telefono'=>['nullable','string','max:25','regex:/^[0-9+()\-\s]+$/'],'correo_electronico'=>['required','email:rfc','max:150'],'direccion'=>['nullable','string','max:200'],'ciudad'=>['nullable','string','max:100'],'fecha_nacimiento'=>['nullable','date','before_or_equal:today'],
             'contacto.nombre_completo'=>['required','string','max:150'],'contacto.parentesco'=>['required','string','max:60'],'contacto.telefono'=>['required','string','max:25','regex:/^[0-9+()\-\s]+$/'],
             'medico.condiciones_medicas'=>['nullable','string','max:5000'],'medico.alergias'=>['nullable','string','max:5000'],'medico.medicamentos'=>['nullable','string','max:5000'],'medico.restricciones_ejercicio'=>['nullable','string','max:5000'],'medico.contacto_medico'=>['nullable','string','max:150'],
-            'consentimiento.aceptado'=>['accepted'],
+            'consentimiento.aceptado'=>['required','accepted'],
         ];
+    }
+
+    public function messages(): array
+    {
+        return [...parent::messages(), 'consentimiento.aceptado.required' => 'Debe aceptar el consentimiento de privacidad.', 'consentimiento.aceptado.accepted' => 'Debe aceptar el consentimiento de privacidad.'];
     }
 }

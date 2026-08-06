@@ -55,6 +55,9 @@ class ClienteService extends StoredProcedureService
 
     public function crearExpediente(array $data, ?int $usuarioId, ?string $ip): ?object
     {
+        // El checkbox HTML llega como texto; MySQL debe recibir un número JSON.
+        $data['consentimiento']['aceptado'] = ! empty($data['consentimiento']['aceptado']) ? 1 : 0;
+
         return $this->selectOne('sp_clientes_crear_expediente', [json_encode($data, JSON_THROW_ON_ERROR), $usuarioId, $ip]);
     }
 

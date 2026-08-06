@@ -8,6 +8,6 @@ class CambiarPasswordRequest extends FitControlRequest
 {
     public function rules(): array
     {
-        return ['password_hash' => ['required', 'string', 'min:50', 'max:255'], 'debe_cambiar_password' => ['sometimes', 'boolean']];
+        return ['password' => ['required', 'string', 'min:6', 'max:72', 'confirmed'], 'debe_cambiar_password' => ['sometimes', 'boolean']];
     }
 }
