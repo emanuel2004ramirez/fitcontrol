@@ -80,7 +80,7 @@ class MembresiaService extends StoredProcedureService
 
     public function crear(array $data): ?object
     {
-        return $this->selectOne('sp_membresias_crear', [$data['cliente_id'], $data['tipo_membresia_id'], $data['precio_membresia_id'], $data['estado_membresia_id'], $data['fecha_inicio'], $data['fecha_fin'], $data['origen'] ?? 'NUEVA', $data['membresia_anterior_id'] ?? null, $data['usuario_id'] ?? null]);
+        return $this->selectOne('sp_membresias_crear', [$data['cliente_id'], $data['tipo_membresia_id'], $data['precio_membresia_id'], $data['estado_membresia_id'], $data['fecha_inicio'], $data['fecha_fin'] ?? null, $data['origen'] ?? 'NUEVA', $data['membresia_anterior_id'] ?? null, $data['usuario_id'] ?? null]);
     }
 
     public function cambiarEstado(int $id, int $estadoId, bool $mantenerActiva, ?string $motivo, ?int $usuarioId): bool

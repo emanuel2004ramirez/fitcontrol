@@ -42,4 +42,75 @@ DROP PROCEDURE IF EXISTS sp_pagos_resumen$$
 CREATE PROCEDURE sp_pagos_resumen() BEGIN SELECT COUNT(*) pagos,COALESCE(SUM(monto),0) total_recibido,COALESCE(SUM(aplicado),0) total_aplicado,COALESCE(SUM(monto-aplicado),0) saldo_sin_aplicar FROM (SELECT p.id,p.monto,COALESCE(SUM(a.monto_aplicado),0) aplicado FROM pagos p LEFT JOIN aplicaciones_pago a ON a.pago_id=p.id GROUP BY p.id) x; END$$
 DROP PROCEDURE IF EXISTS sp_pagos_clientes$$
 CREATE PROCEDURE sp_pagos_clientes() BEGIN SELECT id,numero_socio,CONCAT(nombre,' ',apellido) nombre FROM clientes WHERE deleted_at IS NULL ORDER BY apellido,nombre LIMIT 500; END$$
+DROP PROCEDURE IF EXISTS sp_pagos_membresias_pendientes$$
+CREATE PROCEDURE sp_pagos_membresias_pendientes()
+BEGIN
+ SELECT m.id,m.cliente_id,c.numero_socio,CONCAT(c.nombre,' ',c.apellido) cliente,t.nombre tipo,m.precio_contratado total,m.moneda,m.fecha_inicio,m.fecha_fin
+ FROM membresias m JOIN clientes c ON c.id=m.cliente_id JOIN tipos_membresia t ON t.id=m.tipo_membresia_id
+ WHERE m.deleted_at IS NULL AND c.deleted_at IS NULL
+ AND NOT EXISTS(SELECT 1 FROM cargos_cobro cc WHERE cc.membresia_id=m.id AND COALESCE((SELECT SUM(a.monto_aplicado) FROM aplicaciones_pago a WHERE a.cargo_cobro_id=cc.id),0)>=cc.total)
+ ORDER BY c.apellido,c.nombre,m.fecha_inicio DESC LIMIT 500;
+END$$
+
+DROP PROCEDURE IF EXISTS sp_pagos_registrar_completo$$
+CREATE PROCEDURE sp_pagos_registrar_completo(IN p_idempotency CHAR(36),IN p_membresia_id BIGINT UNSIGNED,IN p_metodo_id BIGINT UNSIGNED,IN p_referencia VARCHAR(120),IN p_usuario_id BIGINT UNSIGNED,IN p_observaciones TEXT)
+BEGIN
+ DECLARE v_cliente BIGINT UNSIGNED; DECLARE v_total DECIMAL(12,2); DECLARE v_moneda CHAR(3); DECLARE v_tipo VARCHAR(100); DECLARE v_cargo BIGINT UNSIGNED; DECLARE v_pago BIGINT UNSIGNED; DECLARE v_estado_pago BIGINT UNSIGNED; DECLARE v_estado_cargo BIGINT UNSIGNED; DECLARE v_estado_activa BIGINT UNSIGNED; DECLARE v_estado_anterior BIGINT UNSIGNED; DECLARE v_pagado DECIMAL(12,2) DEFAULT 0;
+ DECLARE EXIT HANDLER FOR SQLEXCEPTION BEGIN ROLLBACK; RESIGNAL; END;
+ IF EXISTS(SELECT 1 FROM pagos WHERE idempotency_key=p_idempotency) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='El pago ya fue procesado'; END IF;
+ IF EXISTS(SELECT 1 FROM metodos_pago WHERE id=p_metodo_id AND requiere_referencia=1) AND (p_referencia IS NULL OR TRIM(p_referencia)='') THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='El método de pago seleccionado requiere referencia'; END IF;
+ SELECT m.cliente_id,m.precio_contratado,m.moneda,t.nombre,m.estado_membresia_id INTO v_cliente,v_total,v_moneda,v_tipo,v_estado_anterior FROM membresias m JOIN tipos_membresia t ON t.id=m.tipo_membresia_id WHERE m.id=p_membresia_id AND m.deleted_at IS NULL;
+ IF v_cliente IS NULL THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='La membresía no existe'; END IF;
+ SELECT id INTO v_estado_pago FROM estados_pago WHERE codigo='APLICADO' LIMIT 1;
+ SELECT id INTO v_estado_cargo FROM estados_cargo_cobro WHERE codigo='PAGADO' LIMIT 1;
+ SELECT id INTO v_estado_activa FROM estados_membresia WHERE codigo='ACTIVA' LIMIT 1;
+ IF v_estado_pago IS NULL OR v_estado_cargo IS NULL OR v_estado_activa IS NULL THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Los estados financieros no están configurados'; END IF;
+ START TRANSACTION;
+ SELECT id INTO v_cargo FROM cargos_cobro WHERE membresia_id=p_membresia_id AND deleted_at IS NULL ORDER BY id DESC LIMIT 1 FOR UPDATE;
+ IF v_cargo IS NULL THEN
+   INSERT INTO cargos_cobro(numero_cargo,cliente_id,membresia_id,estado_cargo_cobro_id,concepto,subtotal,descuento,impuesto,total,moneda,fecha_emision,fecha_vencimiento,creado_por,created_at,updated_at) VALUES(CONCAT('CG-',UUID_SHORT()),v_cliente,p_membresia_id,v_estado_cargo,CONCAT('Pago de membresía ',v_tipo),v_total,0,0,v_total,v_moneda,CURRENT_DATE,CURRENT_DATE,p_usuario_id,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
+   SET v_cargo=LAST_INSERT_ID();
+ ELSE
+   SELECT COALESCE(SUM(monto_aplicado),0) INTO v_pagado FROM aplicaciones_pago WHERE cargo_cobro_id=v_cargo;
+   IF v_pagado>0 THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='La membresía ya tiene un pago registrado'; END IF;
+   IF (SELECT total FROM cargos_cobro WHERE id=v_cargo)<>v_total THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='El total interno no coincide con el precio de la membresía'; END IF;
+   UPDATE cargos_cobro SET estado_cargo_cobro_id=v_estado_cargo,updated_at=CURRENT_TIMESTAMP WHERE id=v_cargo;
+ END IF;
+ INSERT INTO pagos(idempotency_key,numero_recibo,cliente_id,metodo_pago_id,estado_pago_id,monto,moneda,referencia,pagado_at,procesado_por,observaciones,created_at,updated_at) VALUES(p_idempotency,CONCAT('REC-',UUID_SHORT()),v_cliente,p_metodo_id,v_estado_pago,v_total,v_moneda,NULLIF(TRIM(p_referencia),''),CURRENT_TIMESTAMP,p_usuario_id,NULLIF(TRIM(p_observaciones),''),CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
+ SET v_pago=LAST_INSERT_ID();
+ INSERT INTO aplicaciones_pago(pago_id,cargo_cobro_id,monto_aplicado,created_at,updated_at) VALUES(v_pago,v_cargo,v_total,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
+ INSERT INTO historial_estados_pago(pago_id,estado_nuevo_id,motivo,cambiado_por,cambiado_at,created_at,updated_at) VALUES(v_pago,v_estado_pago,'Pago completo de membresía',p_usuario_id,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
+ IF v_estado_anterior<>v_estado_activa THEN UPDATE membresias SET estado_membresia_id=v_estado_activa,bloqueo_activa=1,updated_at=CURRENT_TIMESTAMP WHERE id=p_membresia_id; INSERT INTO historial_estados_membresia(membresia_id,estado_anterior_id,estado_nuevo_id,motivo,cambiado_por,cambiado_at,created_at,updated_at) VALUES(p_membresia_id,v_estado_anterior,v_estado_activa,'Activación por pago completo',p_usuario_id,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP); END IF;
+ COMMIT;
+ CALL sp_pagos_obtener(v_pago);
+END$$
+
+DROP PROCEDURE IF EXISTS sp_pagos_reconciliar_completo$$
+CREATE PROCEDURE sp_pagos_reconciliar_completo(IN p_pago_id BIGINT UNSIGNED,IN p_membresia_id BIGINT UNSIGNED,IN p_usuario_id BIGINT UNSIGNED)
+BEGIN
+ DECLARE v_cliente BIGINT UNSIGNED; DECLARE v_cliente_m BIGINT UNSIGNED; DECLARE v_monto DECIMAL(12,2); DECLARE v_total DECIMAL(12,2); DECLARE v_moneda CHAR(3); DECLARE v_cargo BIGINT UNSIGNED; DECLARE v_estado_cargo BIGINT UNSIGNED;
+ DECLARE EXIT HANDLER FOR SQLEXCEPTION BEGIN ROLLBACK; RESIGNAL; END;
+ SELECT cliente_id,monto INTO v_cliente,v_monto FROM pagos WHERE id=p_pago_id;
+ SELECT cliente_id,precio_contratado,moneda INTO v_cliente_m,v_total,v_moneda FROM membresias WHERE id=p_membresia_id AND deleted_at IS NULL;
+ IF v_cliente IS NULL OR v_cliente<>v_cliente_m OR v_monto<>v_total THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='El pago no corresponde al total de la membresía'; END IF;
+ IF EXISTS(SELECT 1 FROM aplicaciones_pago WHERE pago_id=p_pago_id) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='El pago ya está aplicado'; END IF;
+ SELECT id INTO v_estado_cargo FROM estados_cargo_cobro WHERE codigo='PAGADO' LIMIT 1;
+ START TRANSACTION;
+ INSERT INTO cargos_cobro(numero_cargo,cliente_id,membresia_id,estado_cargo_cobro_id,concepto,subtotal,descuento,impuesto,total,moneda,fecha_emision,fecha_vencimiento,creado_por,created_at,updated_at) VALUES(CONCAT('CG-',UUID_SHORT()),v_cliente,p_membresia_id,v_estado_cargo,'Pago de membresía',v_total,0,0,v_total,v_moneda,CURRENT_DATE,CURRENT_DATE,p_usuario_id,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
+ SET v_cargo=LAST_INSERT_ID();
+ INSERT INTO aplicaciones_pago(pago_id,cargo_cobro_id,monto_aplicado,created_at,updated_at) VALUES(p_pago_id,v_cargo,v_total,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
+ COMMIT;
+END$$
+
+DROP PROCEDURE IF EXISTS sp_pagos_aplicar$$
+CREATE PROCEDURE sp_pagos_aplicar(IN p_pago_id BIGINT UNSIGNED,IN p_cargo_id BIGINT UNSIGNED,IN p_monto DECIMAL(12,2))
+BEGIN
+ DECLARE v_disponible DECIMAL(12,2); DECLARE v_saldo DECIMAL(12,2);
+ SELECT p.monto-COALESCE((SELECT SUM(a.monto_aplicado) FROM aplicaciones_pago a WHERE a.pago_id=p.id),0) INTO v_disponible FROM pagos p WHERE p.id=p_pago_id;
+ SELECT c.total-COALESCE((SELECT SUM(a.monto_aplicado) FROM aplicaciones_pago a WHERE a.cargo_cobro_id=c.id),0) INTO v_saldo FROM cargos_cobro c WHERE c.id=p_cargo_id AND c.deleted_at IS NULL;
+ IF v_disponible IS NULL OR v_saldo IS NULL THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Pago o registro financiero inexistente'; END IF;
+ IF p_monto<>v_disponible OR p_monto<>v_saldo THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='No se permiten pagos parciales; debe pagarse el total'; END IF;
+ INSERT INTO aplicaciones_pago(pago_id,cargo_cobro_id,monto_aplicado,created_at,updated_at) VALUES(p_pago_id,p_cargo_id,p_monto,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
+END$$
+
 DELIMITER ;

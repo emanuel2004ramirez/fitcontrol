@@ -3,7 +3,6 @@
 use App\Http\Controllers\AsistenciaController;
 use App\Http\Controllers\AuditoriaController;
 use App\Http\Controllers\Auth\LoginController;
-use App\Http\Controllers\CargoCobroController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EjercicioController;
@@ -87,20 +86,9 @@ Route::middleware('auth')->group(function (): void {
         Route::get('/crear', 'create')->middleware('permission:pagos.create')->name('create');
         Route::post('/', 'store')->middleware('permission:pagos.create')->name('store');
         Route::get('/{pago}', 'show')->middleware('permission:pagos.view')->name('show')->whereNumber('pago');
-        Route::post('/{pago}/aplicaciones', 'aplicar')->middleware('permission:pagos.manage')->name('aplicar')->whereNumber('pago');
         Route::patch('/{pago}/estado', 'cambiarEstado')->middleware('permission:pagos.changeStatus')->name('estado')->whereNumber('pago');
     });
 
-    Route::prefix('cargos-cobro')->name('cargos-cobro.')->controller(CargoCobroController::class)->group(function (): void {
-        Route::get('/', 'index')->middleware('permission:pagos.viewAny')->name('index');
-        Route::get('/crear', 'create')->middleware('permission:pagos.create')->name('create');
-        Route::post('/', 'store')->middleware('permission:pagos.create')->name('store');
-        Route::get('/{cargo}', 'show')->middleware('permission:pagos.view')->name('show')->whereNumber('cargo');
-        Route::get('/{cargo}/editar', 'edit')->middleware('permission:pagos.update')->name('edit')->whereNumber('cargo');
-        Route::put('/{cargo}', 'update')->middleware('permission:pagos.update')->name('update')->whereNumber('cargo');
-        Route::patch('/{cargo}/estado', 'cambiarEstado')->middleware('permission:pagos.changeStatus')->name('estado')->whereNumber('cargo');
-        Route::delete('/{cargo}', 'destroy')->middleware('permission:pagos.delete')->name('destroy')->whereNumber('cargo');
-    });
 
     Route::prefix('membresias')->name('membresias.')->controller(MembresiaController::class)->group(function (): void {
         Route::get('/', 'index')->middleware('permission:membresias.viewAny')->name('index');

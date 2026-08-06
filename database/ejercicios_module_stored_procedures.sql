@@ -23,4 +23,15 @@ DROP PROCEDURE IF EXISTS sp_ejercicios_cambiar_estado$$
 CREATE PROCEDURE sp_ejercicios_cambiar_estado(IN p_id BIGINT UNSIGNED,IN p_estado_id BIGINT UNSIGNED) BEGIN IF NOT EXISTS(SELECT 1 FROM estados_ejercicio WHERE id=p_estado_id) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='El estado no existe'; END IF; UPDATE ejercicios SET estado_ejercicio_id=p_estado_id,updated_at=CURRENT_TIMESTAMP WHERE id=p_id AND deleted_at IS NULL; IF ROW_COUNT()=0 THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='El ejercicio no existe o ya tiene ese estado'; END IF; END$$
 DROP PROCEDURE IF EXISTS sp_ejercicios_patrones$$
 CREATE PROCEDURE sp_ejercicios_patrones() BEGIN SELECT DISTINCT patron_movimiento nombre FROM ejercicios WHERE deleted_at IS NULL AND patron_movimiento IS NOT NULL ORDER BY patron_movimiento; END$$
+DROP PROCEDURE IF EXISTS sp_ejercicios_crear$$
+CREATE PROCEDURE sp_ejercicios_crear(IN p_codigo VARCHAR(40),IN p_estado_id BIGINT UNSIGNED,IN p_nombre VARCHAR(120),IN p_patron VARCHAR(80),IN p_equipamiento VARCHAR(120),IN p_descripcion TEXT,IN p_instrucciones TEXT,IN p_video VARCHAR(500))
+BEGIN
+ DECLARE v_id BIGINT UNSIGNED;
+ IF p_nombre IS NULL OR TRIM(p_nombre)='' THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='El nombre del ejercicio es obligatorio'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM estados_ejercicio WHERE id=p_estado_id) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='El estado seleccionado no existe'; END IF;
+ INSERT INTO ejercicios(codigo,estado_ejercicio_id,nombre,patron_movimiento,equipamiento,descripcion,instrucciones,video_url,created_at,updated_at) VALUES(CONCAT('TMP-',UUID_SHORT()),p_estado_id,TRIM(p_nombre),NULLIF(TRIM(p_patron),''),NULLIF(TRIM(p_equipamiento),''),NULLIF(TRIM(p_descripcion),''),NULLIF(TRIM(p_instrucciones),''),NULLIF(TRIM(p_video),''),CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
+ SET v_id=LAST_INSERT_ID();
+ UPDATE ejercicios SET codigo=CONCAT('EJ-',LPAD(v_id,6,'0')) WHERE id=v_id;
+ SELECT * FROM ejercicios WHERE id=v_id;
+END$$
 DELIMITER ;

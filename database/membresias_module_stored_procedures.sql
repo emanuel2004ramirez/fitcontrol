@@ -123,4 +123,25 @@ BEGIN
  COMMIT;
 END$$
 
+DROP PROCEDURE IF EXISTS sp_membresias_crear$$
+CREATE PROCEDURE sp_membresias_crear(IN p_cliente_id BIGINT UNSIGNED,IN p_tipo_id BIGINT UNSIGNED,IN p_precio_id BIGINT UNSIGNED,IN p_estado_id BIGINT UNSIGNED,IN p_fecha_inicio DATE,IN p_fecha_fin DATE,IN p_origen VARCHAR(30),IN p_anterior_id BIGINT UNSIGNED,IN p_usuario_id BIGINT UNSIGNED)
+BEGIN
+ DECLARE v_precio DECIMAL(12,2); DECLARE v_moneda CHAR(3); DECLARE v_dias SMALLINT UNSIGNED; DECLARE v_fin DATE; DECLARE v_id BIGINT UNSIGNED; DECLARE v_lock BIGINT UNSIGNED;
+ DECLARE EXIT HANDLER FOR 1062 BEGIN ROLLBACK; SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='El cliente ya posee una membresía activa'; END;
+ DECLARE EXIT HANDLER FOR SQLEXCEPTION BEGIN ROLLBACK; RESIGNAL; END;
+ IF p_fecha_inicio IS NULL THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='La fecha de inicio es obligatoria'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM clientes WHERE id=p_cliente_id AND deleted_at IS NULL) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Cliente no encontrado'; END IF;
+ SELECT p.precio,p.moneda,t.duracion_dias INTO v_precio,v_moneda,v_dias FROM precios_membresia p JOIN tipos_membresia t ON t.id=p.tipo_membresia_id WHERE p.id=p_precio_id AND p.tipo_membresia_id=p_tipo_id AND p.vigente_desde<=p_fecha_inicio AND (p.vigente_hasta IS NULL OR p.vigente_hasta>=p_fecha_inicio) AND t.activo=1;
+ IF v_precio IS NULL OR v_dias IS NULL THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Precio no vigente o incompatible con el plan'; END IF;
+ SET v_fin=DATE_ADD(p_fecha_inicio,INTERVAL v_dias-1 DAY);
+ START TRANSACTION;
+ SELECT id INTO v_lock FROM clientes WHERE id=p_cliente_id FOR UPDATE;
+ IF EXISTS(SELECT 1 FROM membresias WHERE cliente_id=p_cliente_id AND bloqueo_activa=1 AND deleted_at IS NULL) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='El cliente ya posee una membresía activa'; END IF;
+ INSERT INTO membresias(cliente_id,tipo_membresia_id,precio_membresia_id,estado_membresia_id,membresia_anterior_id,fecha_inicio,fecha_fin,precio_contratado,moneda,bloqueo_activa,origen,creada_por,created_at,updated_at) VALUES(p_cliente_id,p_tipo_id,p_precio_id,p_estado_id,p_anterior_id,p_fecha_inicio,v_fin,v_precio,v_moneda,1,COALESCE(p_origen,'NUEVA'),p_usuario_id,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
+ SET v_id=LAST_INSERT_ID();
+ INSERT INTO historial_estados_membresia(membresia_id,estado_nuevo_id,motivo,cambiado_por,cambiado_at,created_at,updated_at) VALUES(v_id,p_estado_id,'Alta de membresía',p_usuario_id,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
+ COMMIT;
+ SELECT * FROM membresias WHERE id=v_id;
+END$$
+
 DELIMITER ;

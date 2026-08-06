@@ -26,4 +26,28 @@ DROP PROCEDURE IF EXISTS sp_asistencias_clientes_acceso$$
 CREATE PROCEDURE sp_asistencias_clientes_acceso() BEGIN SELECT c.id,c.numero_socio,CONCAT(c.nombre,' ',c.apellido) nombre,m.id membresia_id,t.nombre membresia FROM clientes c JOIN membresias m ON m.cliente_id=c.id AND m.bloqueo_activa=1 AND m.deleted_at IS NULL JOIN estados_membresia e ON e.id=m.estado_membresia_id AND e.permite_acceso=1 JOIN tipos_membresia t ON t.id=m.tipo_membresia_id WHERE c.deleted_at IS NULL AND CURRENT_DATE BETWEEN m.fecha_inicio AND m.fecha_fin AND NOT EXISTS(SELECT 1 FROM asistencias a WHERE a.cliente_id=c.id AND a.salida_at IS NULL) AND NOT EXISTS(SELECT 1 FROM suspensiones_membresia s WHERE s.membresia_id=m.id AND CURRENT_DATE>=s.fecha_inicio AND (s.fecha_fin IS NULL OR CURRENT_DATE<=s.fecha_fin)) ORDER BY c.apellido,c.nombre LIMIT 500;END$$
 DROP PROCEDURE IF EXISTS sp_asistencias_resumen$$
 CREATE PROCEDURE sp_asistencias_resumen() BEGIN SELECT SUM(salida_at IS NULL) dentro_ahora,SUM(DATE(entrada_at)=CURRENT_DATE) entradas_hoy,COALESCE(ROUND(AVG(CASE WHEN salida_at IS NOT NULL AND DATE(entrada_at)=CURRENT_DATE THEN TIMESTAMPDIFF(MINUTE,entrada_at,salida_at) END)),0) promedio_minutos_hoy FROM asistencias;END$$
+DROP PROCEDURE IF EXISTS sp_asistencias_clientes_acceso$$
+CREATE PROCEDURE sp_asistencias_clientes_acceso()
+BEGIN
+ SELECT DISTINCT c.id,c.numero_socio,CONCAT(c.nombre,' ',c.apellido) nombre,m.id membresia_id,t.nombre membresia
+ FROM clientes c JOIN membresias m ON m.cliente_id=c.id AND m.bloqueo_activa=1 AND m.deleted_at IS NULL JOIN estados_membresia e ON e.id=m.estado_membresia_id AND e.permite_acceso=1 JOIN tipos_membresia t ON t.id=m.tipo_membresia_id
+ WHERE c.deleted_at IS NULL AND CURRENT_DATE BETWEEN m.fecha_inicio AND m.fecha_fin
+ AND EXISTS(SELECT 1 FROM cargos_cobro cc WHERE cc.membresia_id=m.id)
+ AND NOT EXISTS(SELECT 1 FROM cargos_cobro cc WHERE cc.membresia_id=m.id AND COALESCE((SELECT SUM(ap.monto_aplicado) FROM aplicaciones_pago ap WHERE ap.cargo_cobro_id=cc.id),0)<cc.total)
+ AND NOT EXISTS(SELECT 1 FROM asistencias a WHERE a.cliente_id=c.id AND a.salida_at IS NULL)
+ AND NOT EXISTS(SELECT 1 FROM suspensiones_membresia s WHERE s.membresia_id=m.id AND CURRENT_DATE>=s.fecha_inicio AND (s.fecha_fin IS NULL OR CURRENT_DATE<=s.fecha_fin)) ORDER BY nombre LIMIT 500;
+END$$
+DROP PROCEDURE IF EXISTS sp_asistencias_registrar_entrada$$
+CREATE PROCEDURE sp_asistencias_registrar_entrada(IN p_cliente_id BIGINT UNSIGNED,IN p_membresia_id BIGINT UNSIGNED,IN p_entrada DATETIME,IN p_metodo VARCHAR(30),IN p_usuario_id BIGINT UNSIGNED,IN p_observaciones TEXT)
+BEGIN
+ DECLARE v_entrada DATETIME DEFAULT COALESCE(p_entrada,CURRENT_TIMESTAMP);
+ DECLARE EXIT HANDLER FOR 1062 SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='El cliente ya tiene una asistencia abierta';
+ IF p_metodo IS NOT NULL AND p_metodo<>'MANUAL' THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='La asistencia solo puede registrarse manualmente'; END IF;
+ IF v_entrada>DATE_ADD(CURRENT_TIMESTAMP,INTERVAL 5 MINUTE) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='La hora de entrada no puede estar en el futuro'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM membresias m JOIN estados_membresia e ON e.id=m.estado_membresia_id WHERE m.id=p_membresia_id AND m.cliente_id=p_cliente_id AND m.deleted_at IS NULL AND m.bloqueo_activa=1 AND e.permite_acceso=1 AND DATE(v_entrada) BETWEEN m.fecha_inicio AND m.fecha_fin) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='El cliente no posee una membresía válida para el acceso'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM cargos_cobro cc WHERE cc.membresia_id=p_membresia_id) OR EXISTS(SELECT 1 FROM cargos_cobro cc WHERE cc.membresia_id=p_membresia_id AND COALESCE((SELECT SUM(ap.monto_aplicado) FROM aplicaciones_pago ap WHERE ap.cargo_cobro_id=cc.id),0)<cc.total) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='El cliente tiene cargos pendientes de pago'; END IF;
+ IF EXISTS(SELECT 1 FROM suspensiones_membresia WHERE membresia_id=p_membresia_id AND DATE(v_entrada)>=fecha_inicio AND (fecha_fin IS NULL OR DATE(v_entrada)<=fecha_fin)) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='La membresía se encuentra congelada'; END IF;
+ INSERT INTO asistencias(cliente_id,membresia_id,entrada_at,bloqueo_abierta,metodo_registro,entrada_registrada_por,observaciones,created_at,updated_at) VALUES(p_cliente_id,p_membresia_id,v_entrada,1,'MANUAL',p_usuario_id,NULLIF(TRIM(p_observaciones),''),CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
+ CALL sp_asistencias_obtener(LAST_INSERT_ID());
+END$$
 DELIMITER ;

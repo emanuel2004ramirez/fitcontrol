@@ -8,6 +8,7 @@ use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 use Spatie\Permission\Middleware\RoleMiddleware;
 use Spatie\Permission\Middleware\RoleOrPermissionMiddleware;
+use Symfony\Component\HttpFoundation\Response;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -23,6 +24,17 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->respond(function (Response $response) {
+            if ($response->getStatusCode() === 419) {
+                return redirect()->route('login')->with(
+                    'warning',
+                    'Tu sesión expiró. Por favor, inicia sesión nuevamente.'
+                );
+            }
+
+            return $response;
+        });
+
         $exceptions->render(function (QueryException $exception, Request $request) {
             $sqlState = $exception->errorInfo[0] ?? null;
             if (! $request->expectsJson() && in_array($sqlState, ['45000', '23000'], true)) {

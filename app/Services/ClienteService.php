@@ -50,7 +50,7 @@ class ClienteService extends StoredProcedureService
 
     public function crear(array $data): ?object
     {
-        return $this->selectOne('sp_clientes_crear', [$data['numero_socio'], $data['sexo_id'] ?? null, $data['estado_cliente_id'], $data['nombre'], $data['apellido'], $data['tipo_identificacion'] ?? null, $data['numero_identificacion'] ?? null, $data['telefono'] ?? null, $data['correo_electronico'] ?? null, $data['direccion'] ?? null, $data['ciudad'] ?? null, $data['pais'] ?? null, $data['fecha_nacimiento'] ?? null, $data['creado_por'] ?? null]);
+        return $this->selectOne('sp_clientes_crear', [null, $data['sexo_id'] ?? null, $data['estado_cliente_id'], $data['nombre'], $data['apellido'], $data['tipo_identificacion'] ?? null, $data['numero_identificacion'] ?? null, $data['telefono'] ?? null, $data['correo_electronico'] ?? null, $data['direccion'] ?? null, $data['ciudad'] ?? null, $data['pais'] ?? null, $data['fecha_nacimiento'] ?? null, $data['creado_por'] ?? null]);
     }
 
     public function actualizar(int $id, array $data): ?object

@@ -38,6 +38,28 @@ class PagoService extends StoredProcedureService
         return $this->select('sp_pagos_clientes');
     }
 
+    public function membresiasPendientes(): array
+    {
+        return $this->select('sp_pagos_membresias_pendientes');
+    }
+
+    public function registrarCompleto(array $data): ?object
+    {
+        return $this->selectOne('sp_pagos_registrar_completo', [
+            $data['idempotency_key'],
+            $data['membresia_id'],
+            $data['metodo_pago_id'],
+            $data['referencia'] ?? null,
+            $data['usuario_id'] ?? null,
+            $data['observaciones'] ?? null,
+        ]);
+    }
+
+    public function reconciliarCompleto(int $pagoId, int $membresiaId, ?int $usuarioId): bool
+    {
+        return $this->statement('sp_pagos_reconciliar_completo', [$pagoId, $membresiaId, $usuarioId]);
+    }
+
     public function listar(int $limite = 100, int $offset = 0): array
     {
         return $this->select('sp_pagos_listar', [$limite, $offset]);

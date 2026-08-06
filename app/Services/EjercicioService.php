@@ -45,7 +45,7 @@ class EjercicioService extends StoredProcedureService
 
     public function crear(array $data): ?object
     {
-        return $this->selectOne('sp_ejercicios_crear', [$data['codigo'], $data['estado_ejercicio_id'], $data['nombre'], $data['patron_movimiento'] ?? null, $data['equipamiento'] ?? null, $data['descripcion'] ?? null, $data['instrucciones'] ?? null, $data['video_url'] ?? null]);
+        return $this->selectOne('sp_ejercicios_crear', [null, $data['estado_ejercicio_id'], $data['nombre'], $data['patron_movimiento'] ?? null, $data['equipamiento'] ?? null, $data['descripcion'] ?? null, $data['instrucciones'] ?? null, $data['video_url'] ?? null]);
     }
 
     public function actualizar(int $id, array $data): bool

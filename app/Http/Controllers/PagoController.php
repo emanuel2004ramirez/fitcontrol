@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\Pago\AplicarPagoRequest;
 use App\Http\Requests\Pago\CambiarEstadoPagoRequest;
 use App\Http\Requests\Pago\FilterPagoRequest;
 use App\Http\Requests\Pago\StorePagoRequest;
@@ -24,27 +23,19 @@ class PagoController extends Controller
 
     public function create(): View
     {
-        return view('pagos.create', ['clientes' => $this->service->clientes(), ...$this->opciones()]);
+        return view('pagos.create', ['membresias' => $this->service->membresiasPendientes(), ...$this->opciones()]);
     }
 
     public function store(StorePagoRequest $r): RedirectResponse
     {
-        $p = $this->service->registrar([...$r->validated(), 'usuario_id' => $r->user()?->getAuthIdentifier()]);
+        $p = $this->service->registrarCompleto([...$r->validated(), 'usuario_id' => $r->user()?->getAuthIdentifier()]);
 
         return redirect()->route('pagos.show', $p->id)->with('success', 'Pago registrado correctamente.');
     }
 
     public function show(int $pago): View
     {
-        return view('pagos.show', ['pago' => $this->service->obtener($pago), 'historial' => $this->service->historial($pago), 'aplicaciones' => $this->service->aplicaciones($pago), 'cargos' => $this->service->cargosDisponibles($pago), ...$this->opciones()]);
-    }
-
-    public function aplicar(AplicarPagoRequest $r, int $pago): RedirectResponse
-    {
-        $d = $r->validated();
-        $this->service->aplicar($pago, $d['cargo_id'], $d['monto']);
-
-        return back()->with('success', 'Pago parcial aplicado correctamente.');
+        return view('pagos.show', ['pago' => $this->service->obtener($pago), 'historial' => $this->service->historial($pago), 'aplicaciones' => $this->service->aplicaciones($pago), ...$this->opciones()]);
     }
 
     public function cambiarEstado(CambiarEstadoPagoRequest $r, int $pago): RedirectResponse

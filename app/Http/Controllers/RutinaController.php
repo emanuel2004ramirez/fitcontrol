@@ -28,12 +28,16 @@ class RutinaController extends Controller
 
     public function create(): View
     {
-        return view('rutinas.create', $this->opciones());
+        return view('rutinas.create', [...$this->opciones(), 'entrenadorActualId' => $this->entrenadorActualId()]);
     }
 
     public function store(StoreRutinaRequest $r): RedirectResponse
     {
-        $x = $this->service->crear([...$r->validated(), 'usuario_id' => $r->user()?->getAuthIdentifier()]);
+        $data = $r->validated();
+        if ($this->entrenadorActualId() !== null) {
+            $data['entrenador_id'] = $this->entrenadorActualId();
+        }
+        $x = $this->service->crear([...$data, 'usuario_id' => $r->user()?->getAuthIdentifier()]);
 
         return redirect()->route('rutinas.show', $x->id)->with('success', 'Rutina creada.');
     }
@@ -41,7 +45,7 @@ class RutinaController extends Controller
     public function show(int $rutina, ?int $version = null): View
     {
         $versiones = $this->service->versiones($rutina);
-        $seleccion = $version ?? ($this->service->obtener($rutina)?->version_activa_id ?? ($versiones[0]->id ?? null));
+        $seleccion = $version ?? ($versiones[0]->id ?? null);
 
         return view('rutinas.show', ['rutina' => $this->service->obtener($rutina), 'versiones' => $versiones, 'versionSeleccionada' => $seleccion, 'contenido' => $seleccion ? $this->service->contenido($seleccion) : [], 'historial' => $this->service->historial($rutina), ...$this->opciones()]);
     }
@@ -84,7 +88,7 @@ class RutinaController extends Controller
 
     public function agregarEjercicio(StoreEjercicioRutinaRequest $r, int $rutina): RedirectResponse
     {
-        $this->service->agregarEjercicio($r->validated());
+        $this->service->agregarEjercicioSimple($rutina, $r->validated(), $r->user()?->getAuthIdentifier());
 
         return back()->with('success', 'Ejercicio agregado.');
     }
@@ -106,5 +110,12 @@ class RutinaController extends Controller
     private function opciones(): array
     {
         return ['clientes' => $this->service->clientes(), 'entrenadores' => $this->service->entrenadores(), 'ejercicios' => $this->service->ejercicios(), 'estados' => $this->catalogos->listar('estados_rutina')];
+    }
+
+    private function entrenadorActualId(): ?int
+    {
+        return in_array('entrenador', session('role_codes', []), true) && session('personal_id')
+            ? (int) session('personal_id')
+            : null;
     }
 }

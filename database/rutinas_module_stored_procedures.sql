@@ -29,9 +29,53 @@ CREATE PROCEDURE sp_rutinas_agregar_sesion(IN p_version_id BIGINT UNSIGNED,IN p_
 DROP PROCEDURE IF EXISTS sp_rutinas_agregar_ejercicio$$
 CREATE PROCEDURE sp_rutinas_agregar_ejercicio(IN p_sesion_id BIGINT UNSIGNED,IN p_ejercicio_id BIGINT UNSIGNED,IN p_orden SMALLINT UNSIGNED,IN p_series SMALLINT UNSIGNED,IN p_rep_min SMALLINT UNSIGNED,IN p_rep_max SMALLINT UNSIGNED,IN p_duracion INT UNSIGNED,IN p_distancia DECIMAL(10,2),IN p_peso DECIMAL(8,2),IN p_descanso SMALLINT UNSIGNED,IN p_rpe DECIMAL(3,1),IN p_rir TINYINT UNSIGNED,IN p_tempo VARCHAR(20),IN p_indicaciones TEXT) BEGIN IF NOT EXISTS(SELECT 1 FROM sesiones_rutina s JOIN versiones_rutina v ON v.id=s.version_rutina_id WHERE s.id=p_sesion_id AND v.publicada_at IS NULL) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='La sesión no existe o su versión ya fue publicada';END IF;INSERT INTO ejercicios_rutina(sesion_rutina_id,ejercicio_id,orden,series,repeticiones_min,repeticiones_max,duracion_segundos,distancia,peso,descanso_segundos,rpe,rir,tempo,indicaciones,created_at,updated_at) VALUES(p_sesion_id,p_ejercicio_id,p_orden,p_series,p_rep_min,p_rep_max,p_duracion,p_distancia,p_peso,p_descanso,p_rpe,p_rir,p_tempo,p_indicaciones,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);END$$
 DROP PROCEDURE IF EXISTS sp_rutinas_clientes$$
-CREATE PROCEDURE sp_rutinas_clientes() BEGIN SELECT id,numero_socio,CONCAT(nombre,' ',apellido) nombre FROM clientes WHERE deleted_at IS NULL ORDER BY apellido,nombre LIMIT 500; END$$
+CREATE PROCEDURE sp_rutinas_clientes() BEGIN SELECT DISTINCT c.id,c.numero_socio,CONCAT(c.nombre,' ',c.apellido) nombre FROM clientes c JOIN membresias m ON m.cliente_id=c.id AND m.deleted_at IS NULL AND m.bloqueo_activa=1 JOIN estados_membresia em ON em.id=m.estado_membresia_id AND em.permite_acceso=1 WHERE c.deleted_at IS NULL AND CURRENT_DATE BETWEEN m.fecha_inicio AND m.fecha_fin AND EXISTS(SELECT 1 FROM cargos_cobro cc WHERE cc.membresia_id=m.id) AND NOT EXISTS(SELECT 1 FROM cargos_cobro cc WHERE cc.membresia_id=m.id AND COALESCE((SELECT SUM(ap.monto_aplicado) FROM aplicaciones_pago ap WHERE ap.cargo_cobro_id=cc.id),0)<cc.total) ORDER BY nombre LIMIT 500; END$$
 DROP PROCEDURE IF EXISTS sp_rutinas_entrenadores$$
 CREATE PROCEDURE sp_rutinas_entrenadores() BEGIN SELECT id,codigo_empleado,CONCAT(nombre,' ',apellido) nombre FROM personal WHERE deleted_at IS NULL ORDER BY apellido,nombre LIMIT 500; END$$
 DROP PROCEDURE IF EXISTS sp_rutinas_ejercicios$$
 CREATE PROCEDURE sp_rutinas_ejercicios() BEGIN SELECT e.id,e.codigo,e.nombre FROM ejercicios e JOIN estados_ejercicio s ON s.id=e.estado_ejercicio_id WHERE e.deleted_at IS NULL ORDER BY e.nombre LIMIT 1000; END$$
+DROP PROCEDURE IF EXISTS sp_rutinas_crear$$
+CREATE PROCEDURE sp_rutinas_crear(IN p_cliente_id BIGINT UNSIGNED,IN p_entrenador_id BIGINT UNSIGNED,IN p_estado_id BIGINT UNSIGNED,IN p_nombre VARCHAR(120),IN p_descripcion TEXT,IN p_inicio DATE,IN p_fin DATE,IN p_usuario_id BIGINT UNSIGNED)
+BEGIN
+ DECLARE v_id BIGINT UNSIGNED;
+ IF NOT EXISTS(SELECT 1 FROM clientes c JOIN membresias m ON m.cliente_id=c.id AND m.deleted_at IS NULL AND m.bloqueo_activa=1 JOIN estados_membresia em ON em.id=m.estado_membresia_id AND em.permite_acceso=1 WHERE c.id=p_cliente_id AND c.deleted_at IS NULL AND CURRENT_DATE BETWEEN m.fecha_inicio AND m.fecha_fin AND EXISTS(SELECT 1 FROM cargos_cobro cc WHERE cc.membresia_id=m.id) AND NOT EXISTS(SELECT 1 FROM cargos_cobro cc WHERE cc.membresia_id=m.id AND COALESCE((SELECT SUM(ap.monto_aplicado) FROM aplicaciones_pago ap WHERE ap.cargo_cobro_id=cc.id),0)<cc.total)) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Solo puede crear rutinas para clientes con membresía vigente y totalmente pagada'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM personal WHERE id=p_entrenador_id AND deleted_at IS NULL) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='El entrenador no está disponible'; END IF;
+ INSERT INTO rutinas(cliente_id,entrenador_id,estado_rutina_id,nombre,descripcion,fecha_inicio,fecha_fin,creada_por,created_at,updated_at) VALUES(p_cliente_id,p_entrenador_id,p_estado_id,TRIM(p_nombre),p_descripcion,p_inicio,p_fin,p_usuario_id,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
+ SET v_id=LAST_INSERT_ID();
+ INSERT INTO versiones_rutina(rutina_id,numero_version,notas_cambio,creada_por,created_at,updated_at) VALUES(v_id,1,'Versión inicial',p_usuario_id,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
+ CALL sp_rutinas_obtener(v_id);
+END$$
+DROP PROCEDURE IF EXISTS sp_rutinas_crear$$
+CREATE PROCEDURE sp_rutinas_crear(IN p_cliente_id BIGINT UNSIGNED,IN p_entrenador_id BIGINT UNSIGNED,IN p_estado_id BIGINT UNSIGNED,IN p_nombre VARCHAR(120),IN p_descripcion TEXT,IN p_inicio DATE,IN p_fin DATE,IN p_usuario_id BIGINT UNSIGNED)
+BEGIN
+ DECLARE v_id BIGINT UNSIGNED; DECLARE v_version BIGINT UNSIGNED;
+ IF NOT EXISTS(SELECT 1 FROM clientes c JOIN membresias m ON m.cliente_id=c.id AND m.deleted_at IS NULL AND m.bloqueo_activa=1 JOIN estados_membresia em ON em.id=m.estado_membresia_id AND em.permite_acceso=1 WHERE c.id=p_cliente_id AND c.deleted_at IS NULL AND CURRENT_DATE BETWEEN m.fecha_inicio AND m.fecha_fin AND EXISTS(SELECT 1 FROM cargos_cobro cc WHERE cc.membresia_id=m.id) AND NOT EXISTS(SELECT 1 FROM cargos_cobro cc WHERE cc.membresia_id=m.id AND COALESCE((SELECT SUM(ap.monto_aplicado) FROM aplicaciones_pago ap WHERE ap.cargo_cobro_id=cc.id),0)<cc.total)) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Solo puede crear rutinas para clientes con membresía vigente y pagada'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM personal WHERE id=p_entrenador_id AND deleted_at IS NULL) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='El entrenador no está disponible'; END IF;
+ START TRANSACTION;
+ INSERT INTO rutinas(cliente_id,entrenador_id,estado_rutina_id,nombre,descripcion,fecha_inicio,fecha_fin,creada_por,created_at,updated_at) VALUES(p_cliente_id,p_entrenador_id,p_estado_id,TRIM(p_nombre),p_descripcion,p_inicio,p_fin,p_usuario_id,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
+ SET v_id=LAST_INSERT_ID();
+ INSERT INTO versiones_rutina(rutina_id,numero_version,notas_cambio,creada_por,created_at,updated_at) VALUES(v_id,1,'Versión inicial',p_usuario_id,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
+ SET v_version=LAST_INSERT_ID();
+ INSERT INTO sesiones_rutina(version_rutina_id,numero_sesion,nombre,created_at,updated_at) VALUES(v_version,1,'Ejercicios',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
+ COMMIT;
+ CALL sp_rutinas_obtener(v_id);
+END$$
+
+DROP PROCEDURE IF EXISTS sp_rutinas_agregar_ejercicio_simple$$
+CREATE PROCEDURE sp_rutinas_agregar_ejercicio_simple(IN p_rutina_id BIGINT UNSIGNED,IN p_ejercicio_id BIGINT UNSIGNED,IN p_series SMALLINT UNSIGNED,IN p_rep_min SMALLINT UNSIGNED,IN p_rep_max SMALLINT UNSIGNED,IN p_peso DECIMAL(8,2),IN p_descanso SMALLINT UNSIGNED,IN p_indicaciones TEXT,IN p_usuario_id BIGINT UNSIGNED)
+BEGIN
+ DECLARE v_version BIGINT UNSIGNED; DECLARE v_sesion BIGINT UNSIGNED; DECLARE v_numero INT UNSIGNED; DECLARE v_orden INT UNSIGNED;
+ DECLARE EXIT HANDLER FOR SQLEXCEPTION BEGIN ROLLBACK; RESIGNAL; END;
+ IF NOT EXISTS(SELECT 1 FROM rutinas WHERE id=p_rutina_id AND deleted_at IS NULL) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='La rutina no existe'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM ejercicios WHERE id=p_ejercicio_id AND deleted_at IS NULL) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='El ejercicio no está disponible'; END IF;
+ IF p_series<1 OR p_rep_min<1 OR p_rep_max<p_rep_min THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Las series o repeticiones no son válidas'; END IF;
+ START TRANSACTION;
+ SELECT id INTO v_version FROM versiones_rutina WHERE rutina_id=p_rutina_id AND publicada_at IS NULL ORDER BY numero_version DESC LIMIT 1 FOR UPDATE;
+ IF v_version IS NULL THEN SELECT COALESCE(MAX(numero_version),0)+1 INTO v_numero FROM versiones_rutina WHERE rutina_id=p_rutina_id; INSERT INTO versiones_rutina(rutina_id,numero_version,notas_cambio,creada_por,created_at,updated_at) VALUES(p_rutina_id,v_numero,'Actualización automática',p_usuario_id,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP); SET v_version=LAST_INSERT_ID(); END IF;
+ SELECT id INTO v_sesion FROM sesiones_rutina WHERE version_rutina_id=v_version ORDER BY numero_sesion,id LIMIT 1 FOR UPDATE;
+ IF v_sesion IS NULL THEN INSERT INTO sesiones_rutina(version_rutina_id,numero_sesion,nombre,created_at,updated_at) VALUES(v_version,1,'Ejercicios',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP); SET v_sesion=LAST_INSERT_ID(); END IF;
+ SELECT COALESCE(MAX(orden),0)+1 INTO v_orden FROM ejercicios_rutina WHERE sesion_rutina_id=v_sesion;
+ INSERT INTO ejercicios_rutina(sesion_rutina_id,ejercicio_id,orden,series,repeticiones_min,repeticiones_max,peso,descanso_segundos,indicaciones,created_at,updated_at) VALUES(v_sesion,p_ejercicio_id,v_orden,p_series,p_rep_min,p_rep_max,p_peso,p_descanso,p_indicaciones,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
+ COMMIT;
+END$$
 DELIMITER ;

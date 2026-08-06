@@ -16,6 +16,8 @@ class AsistenciaController extends Controller
     public function index(FilterAsistenciaRequest $r): View
     {
         $f = $r->validated();
+        $f['desde'] = now()->startOfDay()->toDateTimeString();
+        $f['hasta'] = now()->endOfDay()->toDateTimeString();
 
         return view('asistencias.index', ['asistencias' => $this->service->paginar($f, (int) ($f['por_pagina'] ?? 15), (int) ($f['page'] ?? 1)), 'resumen' => $this->service->resumen(), 'filtros' => $f]);
     }

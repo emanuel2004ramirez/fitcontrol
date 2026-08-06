@@ -108,6 +108,21 @@ class RutinaService extends StoredProcedureService
         return $this->statement('sp_rutinas_agregar_ejercicio', [$data['sesion_rutina_id'], $data['ejercicio_id'], $data['orden'], $data['series'] ?? null, $data['repeticiones_min'] ?? null, $data['repeticiones_max'] ?? null, $data['duracion_segundos'] ?? null, $data['distancia'] ?? null, $data['peso'] ?? null, $data['descanso_segundos'] ?? null, $data['rpe'] ?? null, $data['rir'] ?? null, $data['tempo'] ?? null, $data['indicaciones'] ?? null]);
     }
 
+    public function agregarEjercicioSimple(int $rutinaId, array $data, ?int $usuarioId): bool
+    {
+        return $this->statement('sp_rutinas_agregar_ejercicio_simple', [
+            $rutinaId,
+            $data['ejercicio_id'],
+            $data['series'],
+            $data['repeticiones_min'],
+            $data['repeticiones_max'] ?? $data['repeticiones_min'],
+            $data['peso'] ?? null,
+            $data['descanso_segundos'] ?? null,
+            $data['indicaciones'] ?? null,
+            $usuarioId,
+        ]);
+    }
+
     public function eliminar(int $id): bool
     {
         return $this->statement('sp_rutinas_eliminar', [$id]);

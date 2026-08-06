@@ -53,7 +53,7 @@ abstract class FitControlRequest extends FormRequest
 
         $validator->after(function (Validator $validator): void {
             foreach (Arr::dot($this->all()) as $field => $value) {
-                if ($this->isTechnicalField((string) $field)) {
+                if ($this->isTechnicalField((string) $field) || $this->isNullableField((string) $field)) {
                     continue;
                 }
 
@@ -83,6 +83,14 @@ abstract class FitControlRequest extends FormRequest
             || str_ends_with($field, '.id')
             || str_ends_with($field, '.usuario_id')
             || str_ends_with($field, '.creado_por');
+    }
+
+    private function isNullableField(string $field): bool
+    {
+        $rules = $this->rules()[$field] ?? [];
+        $rules = is_string($rules) ? explode('|', $rules) : $rules;
+
+        return in_array('nullable', $rules, true);
     }
 
     public function attributes(): array

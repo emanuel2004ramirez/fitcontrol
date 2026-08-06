@@ -1,6 +1,38 @@
-@extends('layouts.app') @section('title',$rutina->nombre) @section('content')<x-page-header :title="$rutina->nombre" :subtitle="$rutina->cliente.' · '.$rutina->entrenador"/>
-<div class="row g-4 mb-4"><div class="col-lg-8"><x-card title="Versiones"><div class="d-flex flex-wrap gap-2">@foreach($versiones as $v)<a href="{{ route('rutinas.version',[$rutina->id,$v->id]) }}" class="btn btn-{{ $versionSeleccionada==$v->id?'primary':'outline-secondary' }}">v{{ $v->numero_version }} @if($v->es_activa)<i class="bi bi-check-circle"></i>@endif</a>@endforeach</div><form method="POST" action="{{ route('rutinas.versiones.store',$rutina->id) }}" class="d-flex gap-2 mt-3">@csrf<input type="hidden" name="rutina_id" value="{{ $rutina->id }}"><input class="form-control" name="notas_cambio" placeholder="Notas de la nueva versión"><x-button type="submit">Nueva versión</x-button></form></x-card></div><div class="col-lg-4"><x-card title="Duplicar"><form method="POST" action="{{ route('rutinas.duplicar',$rutina->id) }}" class="d-grid gap-2">@csrf<input class="form-control" name="nombre" value="Copia de {{ $rutina->nombre }}" required><select class="form-select" name="cliente_id">@foreach($clientes as $c)<option value="{{ $c->id }}">{{ $c->nombre }}</option>@endforeach</select><select class="form-select" name="entrenador_id">@foreach($entrenadores as $e)<option value="{{ $e->id }}">{{ $e->nombre }}</option>@endforeach</select><x-button type="submit">Duplicar rutina</x-button></form></x-card></div></div>
-@if($versionSeleccionada)<div class="row g-4 mb-4"><div class="col-lg-8"><x-card title="Sesiones y ejercicios">@php($sesiones=collect($contenido)->groupBy('sesion_id')) @forelse($sesiones as $sid=>$items) @php($s=$items->first())<div class="border rounded p-3 mb-3"><div class="d-flex justify-content-between"><h5>Sesión {{ $s->numero_sesion }} · {{ $s->sesion }}</h5><form method="POST" action="{{ route('rutinas.sesiones.destroy',[$rutina->id,$sid]) }}">@csrf @method('DELETE')<button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button></form></div><table class="table table-sm"><tbody>@foreach($items as $x)@if($x->detalle_id)<tr><td>{{ $x->orden }}. {{ $x->ejercicio }}</td><td>{{ $x->series }} series · {{ $x->repeticiones_min }}–{{ $x->repeticiones_max }} reps</td><td><form method="POST" action="{{ route('rutinas.ejercicios.destroy',[$rutina->id,$x->detalle_id]) }}">@csrf @method('DELETE')<button class="btn btn-sm btn-link text-danger"><i class="bi bi-x"></i></button></form></td></tr>@endif @endforeach</tbody></table><form method="POST" action="{{ route('rutinas.ejercicios.store',$rutina->id) }}" class="row g-2">@csrf<input type="hidden" name="sesion_rutina_id" value="{{ $sid }}"><div class="col"><select class="form-select" name="ejercicio_id">@foreach($ejercicios as $e)<option value="{{ $e->id }}">{{ $e->nombre }}</option>@endforeach</select></div><div class="col-2"><input type="number" class="form-control" name="orden" placeholder="Orden" required></div><div class="col-2"><input type="number" class="form-control" name="series" placeholder="Series"></div><div class="col-2"><input type="number" class="form-control" name="repeticiones_min" placeholder="Reps min"></div><div class="col-2"><input type="number" class="form-control" name="repeticiones_max" placeholder="Reps max"></div><div class="col-auto"><x-button type="submit">+</x-button></div></form></div>@empty<p>La versión aún no tiene sesiones.</p>@endforelse
-<form method="POST" action="{{ route('rutinas.sesiones.store',$rutina->id) }}" class="row g-2">@csrf<input type="hidden" name="version_rutina_id" value="{{ $versionSeleccionada }}"><div class="col-2"><input type="number" class="form-control" name="numero_sesion" placeholder="#" required></div><div class="col"><input class="form-control" name="nombre" placeholder="Nueva sesión" required></div><div class="col-2"><input type="number" min="1" max="7" class="form-control" name="dia_semana" placeholder="Día"></div><div class="col-auto"><x-button type="submit">Agregar</x-button></div></form></x-card></div>
-<div class="col-lg-4"><x-card title="Publicación y activación"><form method="POST" action="{{ route('rutinas.versiones.publicar',$rutina->id) }}" class="mb-3">@csrf<input type="hidden" name="version_rutina_id" value="{{ $versionSeleccionada }}"><x-button type="submit" class="w-100">Publicar versión</x-button></form><form method="POST" action="{{ route('rutinas.versiones.activar',$rutina->id) }}" class="d-grid gap-2">@csrf<input type="hidden" name="version_rutina_id" value="{{ $versionSeleccionada }}"><input class="form-control" name="motivo" placeholder="Motivo de activación" required><x-button type="submit" variant="success">Activar versión</x-button></form></x-card><x-card title="Historial" class="mt-4">@forelse($historial as $h)<div class="border-bottom py-2">Versión {{ $h->version_nueva }}<div class="small text-muted">{{ $h->activada_at }} · {{ $h->motivo }}</div></div>@empty<p>Sin activaciones.</p>@endforelse</x-card></div></div>@endif
+@extends('layouts.app')
+@section('title',$rutina->nombre)
+@section('content')
+<x-page-header :title="$rutina->nombre" :subtitle="$rutina->cliente.' · Entrenador: '.$rutina->entrenador"/>
+
+<x-card title="Ejercicios de la rutina">
+    <div class="table-responsive mb-4">
+        <table class="table align-middle">
+            <thead><tr><th>#</th><th>Ejercicio</th><th>Series</th><th>Repeticiones</th><th>Peso</th><th>Descanso</th><th></th></tr></thead>
+            <tbody>
+            @forelse(collect($contenido)->whereNotNull('detalle_id') as $x)
+                <tr>
+                    <td>{{ $x->orden }}</td><td><strong>{{ $x->ejercicio }}</strong>@if($x->indicaciones)<div class="small text-muted">{{ $x->indicaciones }}</div>@endif</td>
+                    <td>{{ $x->series }}</td><td>{{ $x->repeticiones_min }}@if($x->repeticiones_max && $x->repeticiones_max != $x->repeticiones_min)–{{ $x->repeticiones_max }}@endif</td>
+                    <td>{{ $x->peso ? $x->peso.' kg' : '—' }}</td><td>{{ $x->descanso_segundos ? $x->descanso_segundos.' s' : '—' }}</td>
+                    <td><form method="POST" action="{{ route('rutinas.ejercicios.destroy',[$rutina->id,$x->detalle_id]) }}">@csrf @method('DELETE')<button class="btn btn-sm btn-outline-danger" title="Quitar"><i class="bi bi-trash"></i></button></form></td>
+                </tr>
+            @empty
+                <tr><td colspan="7" class="text-center text-muted py-4">Todavía no se han agregado ejercicios.</td></tr>
+            @endforelse
+            </tbody>
+        </table>
+    </div>
+
+    <div class="border rounded p-3 bg-light">
+        <h6 class="mb-3">Agregar ejercicio</h6>
+        <form method="POST" action="{{ route('rutinas.ejercicios.store',$rutina->id) }}" class="row g-2 align-items-end">@csrf
+            <div class="col-lg-4"><label class="form-label">Ejercicio</label><select class="form-select" name="ejercicio_id" required><option value="">Seleccione</option>@foreach($ejercicios as $e)<option value="{{ $e->id }}">{{ $e->nombre }}</option>@endforeach</select></div>
+            <div class="col-6 col-lg-2"><label class="form-label">Series</label><input type="number" min="1" class="form-control" name="series" value="3" required></div>
+            <div class="col-6 col-lg-2"><label class="form-label">Repeticiones</label><input type="number" min="1" class="form-control" name="repeticiones_min" value="10" required></div>
+            <div class="col-6 col-lg-1"><label class="form-label">Peso</label><input type="number" min="0" step=".01" class="form-control" name="peso"></div>
+            <div class="col-6 col-lg-2"><label class="form-label">Descanso (s)</label><input type="number" min="0" class="form-control" name="descanso_segundos" value="60"></div>
+            <div class="col-lg-1"><x-button type="submit" class="w-100" title="Agregar ejercicio">+</x-button></div>
+            <div class="col-12"><label class="form-label">Indicación <span class="text-muted">(opcional)</span></label><input class="form-control" name="indicaciones" placeholder="Técnica, velocidad o recomendación"></div>
+        </form>
+    </div>
+</x-card>
 @endsection

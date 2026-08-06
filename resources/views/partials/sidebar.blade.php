@@ -5,7 +5,6 @@
         ['label' => 'Clientes', 'icon' => 'bi-people', 'permission' => 'clientes.viewAny', 'route' => 'clientes.index'],
         ['label' => 'Membresías', 'icon' => 'bi-card-checklist', 'permission' => 'membresias.viewAny', 'route' => 'membresias.index'],
         ['label' => 'Pagos', 'icon' => 'bi-wallet2', 'permission' => 'pagos.viewAny', 'route' => 'pagos.index'],
-        ['label' => 'Cargos por cobrar', 'icon' => 'bi-receipt', 'permission' => 'pagos.viewAny', 'route' => 'cargos-cobro.index'],
         ['label' => 'Asistencias', 'icon' => 'bi-qr-code-scan', 'permission' => 'asistencias.viewAny', 'route' => 'asistencias.index'],
         ['label' => 'Rutinas', 'icon' => 'bi-clipboard2-pulse', 'permission' => 'rutinas.viewAny', 'route' => 'rutinas.index'],
         ['label' => 'Evaluaciones', 'icon' => 'bi-activity', 'permission' => 'evaluaciones.viewAny', 'route' => 'evaluaciones.index'],

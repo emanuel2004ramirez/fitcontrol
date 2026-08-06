@@ -42,6 +42,8 @@ class LoginController extends Controller
         $roleName = $roles[0]->nombre ?? 'Usuario';
 
         $request->session()->put('permissions', $permissions);
+        $request->session()->put('role_codes', collect($roles)->pluck('codigo')->all());
+        $request->session()->put('personal_id', $profile?->personal_id);
         $request->session()->put('auth_user', ['name' => Auth::user()->name, 'role' => $position ? "{$position} · {$roleName}" : $roleName]);
 
         return redirect()->intended(route('dashboard'));

@@ -124,18 +124,18 @@ CREATE PROCEDURE sp_clientes_crear(
 BEGIN
  DECLARE v_id BIGINT UNSIGNED;
  DECLARE EXIT HANDLER FOR SQLEXCEPTION BEGIN ROLLBACK; RESIGNAL; END;
- IF p_numero_socio IS NULL OR TRIM(p_numero_socio)='' OR p_nombre IS NULL OR TRIM(p_nombre)='' OR p_apellido IS NULL OR TRIM(p_apellido)='' THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Número de socio, nombre y apellido son obligatorios'; END IF;
+ IF p_nombre IS NULL OR TRIM(p_nombre)='' OR p_apellido IS NULL OR TRIM(p_apellido)='' THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Nombre y apellido son obligatorios'; END IF;
  IF p_correo IS NULL OR TRIM(p_correo)='' THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='El correo electrónico es obligatorio'; END IF;
  IF p_fecha_nacimiento IS NOT NULL AND p_fecha_nacimiento>CURRENT_DATE THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='La fecha de nacimiento no puede ser futura'; END IF;
  IF NOT EXISTS(SELECT 1 FROM estados_cliente WHERE id=p_estado_id AND activo=1) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='El estado del cliente no es válido'; END IF;
  IF p_sexo_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM sexos WHERE id=p_sexo_id AND activo=1) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='El sexo seleccionado no es válido'; END IF;
- IF EXISTS(SELECT 1 FROM clientes WHERE numero_socio=TRIM(p_numero_socio)) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='El número de socio ya está registrado'; END IF;
  IF p_numero_identificacion IS NOT NULL AND TRIM(p_numero_identificacion)<>'' AND EXISTS(SELECT 1 FROM clientes WHERE tipo_identificacion=TRIM(p_tipo_identificacion) AND numero_identificacion=TRIM(p_numero_identificacion)) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='El número de identificación ya pertenece a otro cliente'; END IF;
  IF p_correo IS NOT NULL AND TRIM(p_correo)<>'' AND EXISTS(SELECT 1 FROM clientes WHERE correo_electronico=LOWER(TRIM(p_correo))) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='El correo electrónico ya está registrado'; END IF;
  START TRANSACTION;
  INSERT INTO clientes(numero_socio,sexo_id,estado_cliente_id,nombre,apellido,tipo_identificacion,numero_identificacion,telefono,correo_electronico,direccion,ciudad,pais,fecha_nacimiento,fecha_registro,created_at,updated_at)
- VALUES(TRIM(p_numero_socio),p_sexo_id,p_estado_id,TRIM(p_nombre),TRIM(p_apellido),NULLIF(TRIM(p_tipo_identificacion),''),NULLIF(TRIM(p_numero_identificacion),''),NULLIF(TRIM(p_telefono),''),NULLIF(LOWER(TRIM(p_correo)),''),NULLIF(TRIM(p_direccion),''),NULLIF(TRIM(p_ciudad),''),UPPER(p_pais),p_fecha_nacimiento,CURRENT_DATE,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
+ VALUES(CONCAT('TMP-',UUID_SHORT()),p_sexo_id,p_estado_id,TRIM(p_nombre),TRIM(p_apellido),NULLIF(TRIM(p_tipo_identificacion),''),NULLIF(TRIM(p_numero_identificacion),''),NULLIF(TRIM(p_telefono),''),NULLIF(LOWER(TRIM(p_correo)),''),NULLIF(TRIM(p_direccion),''),NULLIF(TRIM(p_ciudad),''),UPPER(p_pais),p_fecha_nacimiento,CURRENT_DATE,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
  SET v_id=LAST_INSERT_ID();
+ UPDATE clientes SET numero_socio=CONCAT('CLI-',LPAD(v_id,6,'0')) WHERE id=v_id;
  INSERT INTO historial_estados_cliente(cliente_id,estado_nuevo_id,motivo,cambiado_por,cambiado_at,created_at,updated_at) VALUES(v_id,p_estado_id,'Alta de cliente',p_creado_por,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
  COMMIT;
  SELECT * FROM clientes WHERE id=v_id;
