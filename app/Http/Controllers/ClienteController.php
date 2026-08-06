@@ -11,13 +11,14 @@ use App\Http\Requests\Cliente\StoreContactoEmergenciaRequest;
 use App\Http\Requests\Cliente\StoreDatosMedicosRequest;
 use App\Http\Requests\Cliente\UpdateClienteRequest;
 use App\Services\CatalogoService;
+use App\Services\ClienteCorreoService;
 use App\Services\ClienteService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
 class ClienteController extends Controller
 {
-    public function __construct(private readonly ClienteService $service, private readonly CatalogoService $catalogos) {}
+    public function __construct(private readonly ClienteService $service, private readonly CatalogoService $catalogos, private readonly ClienteCorreoService $correo) {}
 
     public function index(FilterClienteRequest $request): View
     {
@@ -33,9 +34,14 @@ class ClienteController extends Controller
 
     public function store(StoreClienteRequest $request): RedirectResponse
     {
-        $this->service->crear([...$request->validated(), 'creado_por' => $request->user()?->getAuthIdentifier()]);
+        $cliente = $this->service->crear([...$request->validated(), 'creado_por' => $request->user()?->getAuthIdentifier()]);
+        $enviado = $cliente !== null && $this->correo->enviarBienvenida($cliente);
 
-        return redirect()->route('clientes.index')->with('success', 'Cliente registrado correctamente.');
+        $redirect = redirect()->route('clientes.index')->with('success', 'Cliente registrado correctamente.');
+
+        return $enviado
+            ? $redirect->with('success', 'Cliente registrado y correo de bienvenida enviado correctamente.')
+            : $redirect->with('warning', 'El cliente fue registrado, pero no se pudo enviar el correo de bienvenida.');
     }
 
     public function show(int $cliente): View
