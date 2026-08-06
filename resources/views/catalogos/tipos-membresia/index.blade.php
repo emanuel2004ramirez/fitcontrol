@@ -97,17 +97,13 @@
                                             <div class="col-md-4 mb-3">
                                                 <label class="form-label">Precio Actual <span class="text-danger">*</span></label>
                                                 <input type="number" step="0.01" name="precio" class="form-control" value="{{ $tipo->precio ?? 0 }}" required min="0">
-                                                <select name="moneda" class="form-select" required>
-                                                    <option value="HNL" @selected(($tipo->moneda ?? '') == 'HNL')>HNL</option>
-                                                    <option value="USD" @selected(($tipo->moneda ?? '') == 'USD')>USD</option>
-                                                </select>
                                             </div>
                                             
                                             <div class="col-md-4 mb-3">
                                                 <label class="form-label">Moneda <span class="text-danger">*</span></label>
                                                 <select name="moneda" class="form-select" required>
-                                                    <option value="HNL" @selected($tipo->moneda == 'HNL')>HNL</option>
-                                                    <option value="USD" @selected($tipo->moneda == 'USD')>USD</option>
+                                                    <option value="HNL" @selected(($tipo->moneda ?? '') == 'HNL')>HNL</option>
+                                                    <option value="USD" @selected(($tipo->moneda ?? '') == 'USD')>USD</option>
                                                 </select>
                                             </div>
                                         </div>
