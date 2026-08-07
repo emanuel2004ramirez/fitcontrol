@@ -2,13 +2,28 @@
 
 namespace App\Http\Requests\Cliente;
 
-class UpdateClienteRequest extends StoreClienteRequest
+use App\Http\Requests\FitControlRequest;
+
+class UpdateClienteRequest extends FitControlRequest
 {
     public function rules(): array
     {
-        $rules = parent::rules();
-        unset($rules['numero_socio'],$rules['estado_cliente_id'],$rules['creado_por']);
+        return [
+            'nombre' => ['required', 'string', 'max:100'],
+            'apellido' => ['required', 'string', 'max:100'],
+            'sexo_id' => ['nullable', 'integer', 'min:1'],
+            'fecha_nacimiento' => ['nullable', 'date', 'before_or_equal:today'],
+            'telefono' => ['nullable', 'digits:8'],
+            'correo_electronico' => ['required', 'email:rfc', 'max:150'],
+            'tipo_identificacion' => ['nullable', 'required_with:numero_identificacion', 'in:DNI,PASAPORTE,CARNET_RESIDENTE,OTRO'],
+            'numero_identificacion' => ['nullable', 'required_with:tipo_identificacion', 'string', 'max:60'],
+            'direccion' => ['nullable', 'string', 'max:200'],
+            'ciudad' => ['nullable', 'string', 'max:100'],
+        ];
+    }
 
-        return $rules;
+    public function messages(): array
+    {
+        return [...parent::messages(), 'telefono.digits' => 'El teléfono debe contener exactamente 8 números.'];
     }
 }

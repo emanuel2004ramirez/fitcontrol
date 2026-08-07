@@ -84,9 +84,12 @@ CREATE PROCEDURE sp_personal_crear(
 )
 BEGIN
     DECLARE v_id BIGINT UNSIGNED;
+    DECLARE v_codigo VARCHAR(30);
     DECLARE EXIT HANDLER FOR SQLEXCEPTION BEGIN ROLLBACK; RESIGNAL; END;
 
-    IF EXISTS (SELECT 1 FROM personal WHERE codigo_empleado = p_codigo) THEN
+    SET v_codigo = NULLIF(TRIM(p_codigo), '');
+
+    IF v_codigo IS NOT NULL AND EXISTS (SELECT 1 FROM personal WHERE codigo_empleado = v_codigo) THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'El código de empleado ya está registrado';
     END IF;
     IF p_correo IS NOT NULL AND EXISTS (SELECT 1 FROM personal WHERE correo_electronico = p_correo) THEN
@@ -103,12 +106,19 @@ BEGIN
     END IF;
 
     START TRANSACTION;
+    IF v_codigo IS NULL THEN
+        SET v_codigo = CONCAT('TMP-', LEFT(REPLACE(UUID(), '-', ''), 26));
+    END IF;
     INSERT INTO personal (codigo_empleado, cargo_id, sexo_id, estado_personal_id, nombre, apellido,
         tipo_identificacion, numero_identificacion, telefono, correo_electronico, fecha_contratacion,
         created_at, updated_at)
-    VALUES (p_codigo, p_cargo_id, p_sexo_id, p_estado_id, p_nombre, p_apellido, p_tipo_id,
+    VALUES (v_codigo, p_cargo_id, p_sexo_id, p_estado_id, p_nombre, p_apellido, p_tipo_id,
         p_numero_id, p_telefono, p_correo, p_fecha_contratacion, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
     SET v_id = LAST_INSERT_ID();
+    IF p_codigo IS NULL OR TRIM(p_codigo) = '' THEN
+        SET v_codigo = CONCAT('EMP-', IF(v_id < 1000000, LPAD(v_id, 6, '0'), v_id));
+        UPDATE personal SET codigo_empleado = v_codigo WHERE id = v_id;
+    END IF;
     INSERT INTO historial_cargos_personal
         (personal_id, cargo_id, vigente_desde, motivo, registrado_por, created_at, updated_at)
     VALUES (v_id, p_cargo_id, p_fecha_contratacion, 'Cargo inicial', p_usuario_id, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);

@@ -10,7 +10,7 @@
                 <input type="hidden" name="evaluacion_fisica_id" value="{{ $evaluacion->id }}">
                 <div class="col"><select class="form-select" name="tipo_medida_id">@foreach($tiposMedida as $tipo) @if($tipo->activo)<option value="{{ $tipo->id }}">{{ $tipo->nombre }} ({{ $tipo->unidad }})</option>@endif @endforeach</select></div>
                 <div class="col-3"><input type="number" step=".0001" class="form-control" name="valor" placeholder="Valor" required></div>
-                <div class="col-3"><input class="form-control" name="instrumento" placeholder="Instrumento"></div>
+                <div class="col-3"><input class="form-control" name="instrumento" placeholder="Instrumento" required></div>
                 <div class="col-auto"><x-button type="submit">Guardar</x-button></div>
             </form>
             <div class="table-responsive"><table class="table align-middle"><thead><tr><th>Medida</th><th>Valor</th><th>Instrumento</th></tr></thead><tbody>

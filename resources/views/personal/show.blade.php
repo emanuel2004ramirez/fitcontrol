@@ -43,7 +43,7 @@
 <ul class="nav nav-tabs mb-3" role="tablist">
     <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#cargos" type="button">Historial de cargos</button></li>
     <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#horarios" type="button">Horarios</button></li>
-    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#evaluaciones" type="button">Evaluaciones</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#evaluaciones" type="button">Evaluaciones de desempeño</button></li>
     <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#estados" type="button">Historial de estados</button></li>
 </ul>
 
@@ -88,7 +88,7 @@
     </div>
 
     <div class="tab-pane fade" id="evaluaciones">
-        <x-card title="Evaluaciones de desempeno">
+        <x-card title="Evaluaciones de desempeño">
             @if($can('personal.manage'))
                 <form method="POST" action="{{ route('personal.evaluaciones-desempeno.store', $personal->id) }}" class="row g-3 border-bottom pb-4 mb-3">@csrf
                     <div class="col-md-3"><label class="form-label" for="periodo_inicio">Periodo desde</label><input type="date" class="form-control" id="periodo_inicio" name="periodo_inicio" required></div>
@@ -106,7 +106,7 @@
             <div class="table-responsive"><table class="table align-middle"><thead><tr><th>Periodo</th><th>Evaluador</th><th>Promedio</th><th>Estado</th><th>Comentarios</th><th class="text-end">Acciones</th></tr></thead><tbody>
                 @forelse($evaluacionesDesempeno as $evaluacion)<tr><td>{{ \Illuminate\Support\Carbon::parse($evaluacion->periodo_inicio)->format('d/m/Y') }} - {{ \Illuminate\Support\Carbon::parse($evaluacion->periodo_fin)->format('d/m/Y') }}<div class="text-muted small">{{ \Illuminate\Support\Carbon::parse($evaluacion->fecha_evaluacion)->format('d/m/Y') }}</div></td><td>{{ $evaluacion->evaluador ?: 'No registrado' }}</td><td><span class="badge text-bg-{{ $evaluacion->promedio >= 4 ? 'success' : ($evaluacion->promedio >= 3 ? 'warning' : 'danger') }}">{{ number_format((float) $evaluacion->promedio, 2) }}/5</span></td><td><span class="badge text-bg-{{ $evaluacion->estado === 'aprobada' ? 'primary' : 'secondary' }}">{{ ucfirst($evaluacion->estado) }}</span></td><td>{{ $evaluacion->comentarios ?: 'Sin comentarios' }}</td><td class="text-end">
                     @if($can('personal.manage') && $evaluacion->estado !== 'aprobada')
-                        <form method="POST" action="{{ route('personal.evaluaciones-desempeno.aprobar', [$personal->id, $evaluacion->id]) }}" class="d-inline" onsubmit="return confirm('Aprobar esta evaluacion de desempeno?')">@csrf @method('PATCH')<button class="btn btn-sm btn-outline-primary" title="Aprobar"><i class="bi bi-check2-circle"></i></button></form>
+                        <form method="POST" action="{{ route('personal.evaluaciones-desempeno.aprobar', [$personal->id, $evaluacion->id]) }}" class="d-inline" onsubmit="return confirm('¿Aprobar esta evaluación de desempeño?')">@csrf @method('PATCH')<button class="btn btn-sm btn-outline-primary" title="Aprobar"><i class="bi bi-check2-circle"></i></button></form>
                     @elseif($evaluacion->aprobador)
                         <small class="text-muted">Aprobada por {{ $evaluacion->aprobador }}</small>
                     @endif

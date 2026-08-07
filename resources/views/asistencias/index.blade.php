@@ -51,7 +51,7 @@
                     <div class="mb-3">
                         <div class="d-flex justify-content-between mb-1">
                             <span class="text-muted small">Membresía</span>
-                            <span class="fw-semibold small">{{ $asistencia->membresia ?? '-' }}</span>
+                            <span class="fw-semibold small">{{ $asistencia->tipo_membresia ?? '-' }}</span>
                         </div>
                         <div class="d-flex justify-content-between mb-1">
                             <span class="text-muted small">Hora Entrada</span>

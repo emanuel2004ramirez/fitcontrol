@@ -10,8 +10,7 @@ BEGIN
   (SELECT COUNT(*) FROM asistencias WHERE salida_at IS NULL) personas_dentro,
   (SELECT COALESCE(SUM(monto),0) FROM pagos WHERE pagado_at>=CURRENT_DATE AND pagado_at<CURRENT_DATE+INTERVAL 1 DAY) ingresos_hoy,
   (SELECT COALESCE(SUM(monto),0) FROM pagos WHERE pagado_at>=DATE_FORMAT(CURRENT_DATE,'%Y-%m-01') AND pagado_at<CURRENT_DATE+INTERVAL 1 DAY) ingresos_mes,
-  (SELECT COUNT(*) FROM membresias WHERE bloqueo_activa=1 AND deleted_at IS NULL AND fecha_fin>=CURRENT_DATE AND fecha_fin<CURRENT_DATE+INTERVAL 8 DAY) membresias_por_vencer,
-  (SELECT COALESCE(SUM(x.total-x.pagado),0) FROM (SELECT c.id,c.total,COALESCE(SUM(a.monto_aplicado),0) pagado FROM cargos_cobro c LEFT JOIN aplicaciones_pago a ON a.cargo_cobro_id=c.id WHERE c.deleted_at IS NULL GROUP BY c.id) x) cuentas_por_cobrar;
+  (SELECT COUNT(*) FROM membresias WHERE bloqueo_activa=1 AND deleted_at IS NULL AND fecha_fin>=CURRENT_DATE AND fecha_fin<CURRENT_DATE+INTERVAL 8 DAY) membresias_por_vencer;
 END$$
 DROP PROCEDURE IF EXISTS sp_dashboard_asistencias_serie$$
 CREATE PROCEDURE sp_dashboard_asistencias_serie(IN p_dias INT UNSIGNED)
@@ -20,8 +19,19 @@ DROP PROCEDURE IF EXISTS sp_dashboard_ingresos_serie$$
 CREATE PROCEDURE sp_dashboard_ingresos_serie(IN p_dias INT UNSIGNED)
 BEGIN WITH RECURSIVE fechas AS (SELECT CURRENT_DATE-INTERVAL (LEAST(COALESCE(p_dias,14),90)-1) DAY fecha UNION ALL SELECT fecha+INTERVAL 1 DAY FROM fechas WHERE fecha<CURRENT_DATE) SELECT f.fecha,COALESCE(SUM(p.monto),0) ingresos FROM fechas f LEFT JOIN pagos p ON p.pagado_at>=f.fecha AND p.pagado_at<f.fecha+INTERVAL 1 DAY GROUP BY f.fecha ORDER BY f.fecha;END$$
 DROP PROCEDURE IF EXISTS sp_dashboard_membresias_estados$$
-CREATE PROCEDURE sp_dashboard_membresias_estados()
-BEGIN SELECT e.nombre estado,COUNT(m.id) cantidad FROM estados_membresia e LEFT JOIN membresias m ON m.estado_membresia_id=e.id AND m.deleted_at IS NULL GROUP BY e.id,e.nombre,e.orden ORDER BY e.orden,e.nombre;END$$
+DROP PROCEDURE IF EXISTS sp_dashboard_membresias_planes$$
+CREATE PROCEDURE sp_dashboard_membresias_planes()
+BEGIN
+ SELECT t.nombre plan,COUNT(m.id) cantidad
+ FROM tipos_membresia t
+ LEFT JOIN membresias m ON m.tipo_membresia_id=t.id
+  AND m.bloqueo_activa=1 AND m.deleted_at IS NULL
+  AND CURRENT_DATE BETWEEN m.fecha_inicio AND m.fecha_fin
+ WHERE t.activo=1
+ GROUP BY t.id,t.nombre
+ HAVING COUNT(m.id)>0
+ ORDER BY cantidad DESC,t.nombre;
+END$$
 DROP PROCEDURE IF EXISTS sp_dashboard_actividad_reciente$$
 CREATE PROCEDURE sp_dashboard_actividad_reciente(IN p_limite INT UNSIGNED)
 BEGIN SELECT * FROM (

@@ -3,6 +3,7 @@
 use App\Http\Controllers\AsistenciaController;
 use App\Http\Controllers\AuditoriaController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\ForcedPasswordController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EjercicioController;
@@ -23,6 +24,8 @@ Route::middleware('guest')->group(function (): void {
 Route::middleware('auth')->group(function (): void {
     Route::redirect('/', '/dashboard');
     Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
+    Route::get('/cambiar-contrasena', [ForcedPasswordController::class, 'edit'])->name('password.change.edit');
+    Route::put('/cambiar-contrasena', [ForcedPasswordController::class, 'update'])->name('password.change.update');
 
     Route::prefix('usuarios')->name('usuarios.')->controller(UsuarioController::class)->group(function (): void {
         Route::get('/', 'index')->middleware('permission:usuarios.viewAny')->name('index');

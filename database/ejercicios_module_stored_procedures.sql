@@ -13,6 +13,18 @@ DROP PROCEDURE IF EXISTS sp_ejercicios_cambiar_estado$$
 CREATE PROCEDURE sp_ejercicios_cambiar_estado(IN p_id BIGINT UNSIGNED,IN p_estado_id BIGINT UNSIGNED) BEGIN UPDATE ejercicios SET estado_ejercicio_id=p_estado_id WHERE id=p_id; END$$
 DROP PROCEDURE IF EXISTS sp_ejercicios_eliminar$$
 CREATE PROCEDURE sp_ejercicios_eliminar(IN p_id BIGINT UNSIGNED) BEGIN UPDATE ejercicios SET deleted_at=CURRENT_TIMESTAMP WHERE id=p_id; END$$
+DROP PROCEDURE IF EXISTS sp_ejercicios_equipamientos_activos$$
+CREATE PROCEDURE sp_ejercicios_equipamientos_activos() BEGIN SELECT id,codigo,nombre FROM equipamientos WHERE activo=1 ORDER BY nombre; END$$
+DROP PROCEDURE IF EXISTS sp_ejercicios_sincronizar_equipamientos$$
+CREATE PROCEDURE sp_ejercicios_sincronizar_equipamientos(IN p_ejercicio_id BIGINT UNSIGNED,IN p_ids JSON)
+BEGIN
+ DECLARE EXIT HANDLER FOR SQLEXCEPTION BEGIN ROLLBACK;RESIGNAL;END;
+ IF NOT EXISTS(SELECT 1 FROM ejercicios WHERE id=p_ejercicio_id AND deleted_at IS NULL) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='El ejercicio no existe'; END IF;
+ IF EXISTS(SELECT 1 FROM JSON_TABLE(COALESCE(p_ids,JSON_ARRAY()),'$[*]' COLUMNS(id BIGINT PATH '$')) x LEFT JOIN equipamientos e ON e.id=x.id AND e.activo=1 WHERE e.id IS NULL) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Uno de los equipamientos no está disponible'; END IF;
+ START TRANSACTION; DELETE FROM ejercicio_equipamiento WHERE ejercicio_id=p_ejercicio_id;
+ INSERT INTO ejercicio_equipamiento(ejercicio_id,equipamiento_id,created_at,updated_at) SELECT p_ejercicio_id,x.id,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM JSON_TABLE(COALESCE(p_ids,JSON_ARRAY()),'$[*]' COLUMNS(id BIGINT PATH '$')) x GROUP BY x.id;
+ COMMIT;
+END$$
 DELIMITER ;
 
 

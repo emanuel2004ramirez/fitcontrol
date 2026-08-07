@@ -19,9 +19,9 @@ class DashboardService extends StoredProcedureService
         return $this->select('sp_dashboard_ingresos_serie', [$dias]);
     }
 
-    public function membresiasPorEstado(): array
+    public function membresiasPorPlan(): array
     {
-        return $this->select('sp_dashboard_membresias_estados');
+        return $this->select('sp_dashboard_membresias_planes');
     }
 
     public function actividad(int $limite = 8): array

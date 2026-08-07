@@ -39,7 +39,11 @@ class StoredProcedureUserProvider implements UserProvider
     public function rehashPasswordIfRequired(Authenticatable $user, #[\SensitiveParameter] array $credentials, bool $force = false): void
     {
         if ($force || $this->hasher->needsRehash($user->getAuthPassword())) {
-            $this->users->cambiarPassword((int) $user->getAuthIdentifier(), $this->hasher->make($credentials['password']), false);
+            $this->users->cambiarPassword(
+                (int) $user->getAuthIdentifier(),
+                $this->hasher->make($credentials['password']),
+                (bool) $user->debe_cambiar_password,
+            );
         }
     }
 

@@ -46,6 +46,10 @@ class LoginController extends Controller
         $request->session()->put('personal_id', $profile?->personal_id);
         $request->session()->put('auth_user', ['name' => Auth::user()->name, 'role' => $position ? "{$position} · {$roleName}" : $roleName]);
 
+        if (Auth::user()->debe_cambiar_password) {
+            return redirect()->route('password.change.edit');
+        }
+
         return redirect()->intended(route('dashboard'));
     }
 

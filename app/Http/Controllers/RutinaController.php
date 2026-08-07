@@ -22,13 +22,14 @@ use App\Http\Requests\Rutina\StoreRutinaRequest;
 use App\Http\Requests\Rutina\StoreSesionRutinaRequest;
 use App\Http\Requests\Rutina\StoreVersionRutinaRequest;
 use App\Services\CatalogoService;
+use App\Services\EjercicioService;
 use App\Services\RutinaService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
 class RutinaController extends Controller
 {
-    public function __construct(private readonly RutinaService $service, private readonly CatalogoService $catalogos) {}
+    public function __construct(private readonly RutinaService $service, private readonly CatalogoService $catalogos, private readonly EjercicioService $ejercicios) {}
 
     public function index(Request $request): View
     {
@@ -244,7 +245,7 @@ class RutinaController extends Controller
             'ejercicios' => $this->service->ejercicios(),
             'estados' => $this->catalogos->listar('estados_rutina'),
             'gruposMusculares' => $this->catalogos->listar('grupos_musculares'),
-            'equipamientosRutina' => \App\Models\Equipamiento::query()->where('activo', true)->orderBy('nombre')->get(),
+            'equipamientosRutina' => $this->ejercicios->equipamientosActivos(),
         ];
     }
 

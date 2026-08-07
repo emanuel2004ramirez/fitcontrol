@@ -48,7 +48,15 @@ class EjercicioService extends StoredProcedureService
         return $this->statement('sp_ejercicios_actualizar', [$id, $data['estado_ejercicio_id'], $data['nombre'], $data['grupo_muscular_id'], $data['descripcion'] ?? null, $data['instrucciones'] ?? null, $data['video_url'] ?? null]);
     }
 
-    public function sincronizarEquipamientos(int $ejercicioId, array $ids): void { \App\Models\Ejercicio::query()->findOrFail($ejercicioId)->equipamientos()->sync(array_unique($ids)); }
+    public function equipamientosActivos(): array
+    {
+        return $this->select('sp_ejercicios_equipamientos_activos');
+    }
+
+    public function sincronizarEquipamientos(int $ejercicioId, array $ids): void
+    {
+        $this->statement('sp_ejercicios_sincronizar_equipamientos', [$ejercicioId, json_encode(array_values(array_unique(array_map('intval', $ids))), JSON_THROW_ON_ERROR)]);
+    }
 
     public function asignarGrupoMuscular(int $ejercicioId, int $grupoId): bool
     {

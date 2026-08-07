@@ -15,7 +15,7 @@ class DashboardController extends Controller
             'indicadores' => $this->service->indicadores(),
             'asistencias' => $this->service->asistencias(),
             'ingresos' => $this->service->ingresos(),
-            'membresiasEstados' => $this->service->membresiasPorEstado(),
+            'membresiasPlanes' => $this->service->membresiasPorPlan(),
             'actividad' => $this->service->actividad(),
             'alertas' => $this->service->alertas(),
         ]);

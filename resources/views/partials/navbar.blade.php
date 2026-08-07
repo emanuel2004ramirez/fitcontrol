@@ -9,7 +9,6 @@
 
         <div class="navbar-actions ms-auto">
             <button class="btn btn-icon" type="button" data-theme-toggle title="Cambiar tema" aria-label="Cambiar tema"><i class="bi bi-moon-stars"></i></button>
-            <button class="btn btn-icon position-relative" type="button" title="Notificaciones" aria-label="Notificaciones"><i class="bi bi-bell"></i><span class="notification-dot"></span></button>
 
             <div class="dropdown">
                 <button class="btn user-menu dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">

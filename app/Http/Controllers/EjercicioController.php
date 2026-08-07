@@ -86,6 +86,6 @@ class EjercicioController extends Controller
 
     private function opciones(): array
     {
-        return ['estados' => $this->catalogos->listar('estados_ejercicio'), 'grupos' => $this->catalogos->listar('grupos_musculares'), 'equipamientos' => \App\Models\Equipamiento::query()->where('activo', true)->orderBy('nombre')->get()];
+        return ['estados' => $this->catalogos->listar('estados_ejercicio'), 'grupos' => $this->catalogos->listar('grupos_musculares'), 'equipamientos' => $this->service->equipamientosActivos()];
     }
 }
