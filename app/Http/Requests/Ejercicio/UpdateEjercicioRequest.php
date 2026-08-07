@@ -7,8 +7,7 @@ class UpdateEjercicioRequest extends StoreEjercicioRequest
     public function rules(): array
     {
         $rules = parent::rules();
-        unset($rules['codigo']);
-
+        $rules['estado_ejercicio_id'] = ['required', 'integer', 'min:1'];
         return $rules;
     }
 }

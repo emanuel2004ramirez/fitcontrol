@@ -103,4 +103,39 @@ BEGIN
     UPDATE users SET personal_id = p_personal_id, updated_at = CURRENT_TIMESTAMP WHERE id = p_user_id;
 END$$
 
+DROP PROCEDURE IF EXISTS sp_users_admin_listar$$
+CREATE PROCEDURE sp_users_admin_listar()
+BEGIN
+ SELECT u.id,u.personal_id,u.name,u.username,u.email,u.activo,u.debe_cambiar_password,u.ultimo_acceso_at,
+   CONCAT(pe.nombre,' ',pe.apellido) empleado,c.nombre cargo,
+   GROUP_CONCAT(DISTINCT r.nombre ORDER BY r.nombre SEPARATOR ', ') roles
+ FROM users u LEFT JOIN personal pe ON pe.id=u.personal_id LEFT JOIN cargos c ON c.id=pe.cargo_id
+ LEFT JOIN role_user ru ON ru.user_id=u.id LEFT JOIN roles r ON r.id=ru.role_id
+ WHERE u.deleted_at IS NULL GROUP BY u.id,pe.nombre,pe.apellido,c.nombre ORDER BY u.name;
+END$$
+
+DROP PROCEDURE IF EXISTS sp_users_personal_disponible$$
+CREATE PROCEDURE sp_users_personal_disponible(IN p_usuario_id BIGINT UNSIGNED)
+BEGIN
+ SELECT pe.id,pe.codigo_empleado,CONCAT(pe.nombre,' ',pe.apellido) nombre,c.nombre cargo
+ FROM personal pe JOIN cargos c ON c.id=pe.cargo_id
+ WHERE pe.deleted_at IS NULL AND NOT EXISTS(SELECT 1 FROM users u WHERE u.personal_id=pe.id AND u.deleted_at IS NULL AND (p_usuario_id IS NULL OR u.id<>p_usuario_id))
+ ORDER BY pe.apellido,pe.nombre;
+END$$
+
+DROP PROCEDURE IF EXISTS sp_users_crear_con_rol$$
+CREATE PROCEDURE sp_users_crear_con_rol(IN p_personal_id BIGINT UNSIGNED,IN p_name VARCHAR(255),IN p_username VARCHAR(60),IN p_email VARCHAR(150),IN p_password_hash VARCHAR(255),IN p_debe_cambiar BOOLEAN,IN p_rol_id BIGINT UNSIGNED)
+BEGIN
+ DECLARE v_id BIGINT UNSIGNED; DECLARE EXIT HANDLER FOR SQLEXCEPTION BEGIN ROLLBACK;RESIGNAL;END;
+ IF p_password_hash IS NULL OR CHAR_LENGTH(p_password_hash)<50 THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='La contraseña no fue protegida correctamente'; END IF;
+ IF EXISTS(SELECT 1 FROM users WHERE deleted_at IS NULL AND (username=LOWER(TRIM(p_username)) OR (p_email IS NOT NULL AND email=LOWER(TRIM(p_email))))) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='El usuario o correo ya está registrado'; END IF;
+ IF p_personal_id IS NOT NULL AND EXISTS(SELECT 1 FROM users WHERE personal_id=p_personal_id AND deleted_at IS NULL) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='El empleado ya tiene una cuenta de usuario'; END IF;
+ IF p_personal_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM personal WHERE id=p_personal_id AND deleted_at IS NULL) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='El empleado seleccionado no existe'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM roles WHERE id=p_rol_id AND activo=1) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='El rol seleccionado no es válido'; END IF;
+ START TRANSACTION;
+ INSERT INTO users(personal_id,name,username,email,password,activo,debe_cambiar_password,created_at,updated_at) VALUES(p_personal_id,TRIM(p_name),LOWER(TRIM(p_username)),NULLIF(LOWER(TRIM(p_email)),''),p_password_hash,1,COALESCE(p_debe_cambiar,1),CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
+ SET v_id=LAST_INSERT_ID(); INSERT INTO role_user(role_id,user_id,created_at,updated_at) VALUES(p_rol_id,v_id,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
+ COMMIT; SELECT id,personal_id,name,username,email,activo,debe_cambiar_password FROM users WHERE id=v_id;
+END$$
+
 DELIMITER ;

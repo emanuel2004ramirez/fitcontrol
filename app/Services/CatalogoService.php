@@ -29,7 +29,9 @@ class CatalogoService extends StoredProcedureService
     {
         $this->assertCatalogo($catalogo);
 
-        return $this->select("sp_{$catalogo}_listar", [$busqueda, $limite, $offset]);
+        // Los procedimientos de catálogo interpretan una cadena vacía como
+        // "sin filtro". En MySQL, comparar NULL con texto nunca es verdadero.
+        return $this->select("sp_{$catalogo}_listar", [$busqueda ?? '', $limite, $offset]);
     }
 
     public function obtener(string $catalogo, int $id): ?object

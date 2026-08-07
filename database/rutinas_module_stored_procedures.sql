@@ -10,7 +10,7 @@ CREATE PROCEDURE sp_rutinas_obtener(IN p_id BIGINT UNSIGNED) BEGIN IF NOT EXISTS
 DROP PROCEDURE IF EXISTS sp_rutinas_versiones$$
 CREATE PROCEDURE sp_rutinas_versiones(IN p_id BIGINT UNSIGNED) BEGIN SELECT v.*,(r.version_activa_id=v.id) es_activa,(SELECT COUNT(*) FROM sesiones_rutina s WHERE s.version_rutina_id=v.id) sesiones FROM versiones_rutina v JOIN rutinas r ON r.id=v.rutina_id WHERE v.rutina_id=p_id ORDER BY v.numero_version DESC; END$$
 DROP PROCEDURE IF EXISTS sp_rutinas_contenido_version$$
-CREATE PROCEDURE sp_rutinas_contenido_version(IN p_version_id BIGINT UNSIGNED) BEGIN SELECT s.id sesion_id,s.numero_sesion,s.nombre sesion,s.dia_semana,s.indicaciones indicaciones_sesion,er.id detalle_id,er.orden,ej.id ejercicio_id,ej.nombre ejercicio,er.series,er.repeticiones_min,er.repeticiones_max,er.duracion_segundos,er.distancia,er.peso,er.descanso_segundos,er.rpe,er.rir,er.tempo,er.indicaciones FROM sesiones_rutina s LEFT JOIN ejercicios_rutina er ON er.sesion_rutina_id=s.id LEFT JOIN ejercicios ej ON ej.id=er.ejercicio_id WHERE s.version_rutina_id=p_version_id ORDER BY s.numero_sesion,er.orden; END$$
+CREATE PROCEDURE sp_rutinas_contenido_version(IN p_version_id BIGINT UNSIGNED) BEGIN SELECT s.id sesion_id,s.numero_sesion,s.nombre sesion,s.dia_semana,s.indicaciones indicaciones_sesion,er.id detalle_id,er.orden,ej.id ejercicio_id,ej.nombre ejercicio,er.series,er.repeticiones_min,er.repeticiones_max,er.peso,er.descanso_segundos,er.indicaciones FROM sesiones_rutina s LEFT JOIN ejercicios_rutina er ON er.sesion_rutina_id=s.id LEFT JOIN ejercicios ej ON ej.id=er.ejercicio_id WHERE s.version_rutina_id=p_version_id ORDER BY s.numero_sesion,er.orden; END$$
 DROP PROCEDURE IF EXISTS sp_rutinas_historial$$
 CREATE PROCEDURE sp_rutinas_historial(IN p_id BIGINT UNSIGNED) BEGIN SELECT h.id,va.numero_version version_anterior,vn.numero_version version_nueva,h.motivo,h.activada_por,h.activada_at FROM historial_versiones_rutina h LEFT JOIN versiones_rutina va ON va.id=h.version_anterior_id JOIN versiones_rutina vn ON vn.id=h.version_nueva_id WHERE h.rutina_id=p_id ORDER BY h.activada_at DESC; END$$
 DROP PROCEDURE IF EXISTS sp_rutinas_activar_version$$
@@ -33,7 +33,7 @@ CREATE PROCEDURE sp_rutinas_clientes() BEGIN SELECT DISTINCT c.id,c.numero_socio
 DROP PROCEDURE IF EXISTS sp_rutinas_entrenadores$$
 CREATE PROCEDURE sp_rutinas_entrenadores() BEGIN SELECT id,codigo_empleado,CONCAT(nombre,' ',apellido) nombre FROM personal WHERE deleted_at IS NULL ORDER BY apellido,nombre LIMIT 500; END$$
 DROP PROCEDURE IF EXISTS sp_rutinas_ejercicios$$
-CREATE PROCEDURE sp_rutinas_ejercicios() BEGIN SELECT e.id,e.codigo,e.nombre FROM ejercicios e JOIN estados_ejercicio s ON s.id=e.estado_ejercicio_id WHERE e.deleted_at IS NULL ORDER BY e.nombre LIMIT 1000; END$$
+CREATE PROCEDURE sp_rutinas_ejercicios() BEGIN SELECT e.id,e.codigo,e.nombre,GROUP_CONCAT(eq.nombre ORDER BY eq.nombre SEPARATOR ', ') equipamiento,gm.nombre grupos_musculares FROM ejercicios e JOIN estados_ejercicio s ON s.id=e.estado_ejercicio_id LEFT JOIN grupos_musculares gm ON gm.id=e.grupo_muscular_id LEFT JOIN ejercicio_equipamiento xe ON xe.ejercicio_id=e.id LEFT JOIN equipamientos eq ON eq.id=xe.equipamiento_id WHERE e.deleted_at IS NULL AND s.codigo='DISPONIBLE' GROUP BY e.id,gm.nombre ORDER BY e.nombre LIMIT 1000; END$$
 DROP PROCEDURE IF EXISTS sp_rutinas_crear$$
 CREATE PROCEDURE sp_rutinas_crear(IN p_cliente_id BIGINT UNSIGNED,IN p_entrenador_id BIGINT UNSIGNED,IN p_estado_id BIGINT UNSIGNED,IN p_nombre VARCHAR(120),IN p_descripcion TEXT,IN p_inicio DATE,IN p_fin DATE,IN p_usuario_id BIGINT UNSIGNED)
 BEGIN
@@ -77,5 +77,47 @@ BEGIN
  SELECT COALESCE(MAX(orden),0)+1 INTO v_orden FROM ejercicios_rutina WHERE sesion_rutina_id=v_sesion;
  INSERT INTO ejercicios_rutina(sesion_rutina_id,ejercicio_id,orden,series,repeticiones_min,repeticiones_max,peso,descanso_segundos,indicaciones,created_at,updated_at) VALUES(v_sesion,p_ejercicio_id,v_orden,p_series,p_rep_min,p_rep_max,p_peso,p_descanso,p_indicaciones,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
  COMMIT;
+END$$
+DROP PROCEDURE IF EXISTS sp_rutinas_actualizar_ejercicio$$
+CREATE PROCEDURE sp_rutinas_actualizar_ejercicio(IN p_id BIGINT UNSIGNED,IN p_series SMALLINT UNSIGNED,IN p_rep_min SMALLINT UNSIGNED,IN p_rep_max SMALLINT UNSIGNED,IN p_peso DECIMAL(8,2),IN p_descanso SMALLINT UNSIGNED,IN p_indicaciones TEXT) BEGIN UPDATE ejercicios_rutina er JOIN sesiones_rutina s ON s.id=er.sesion_rutina_id JOIN versiones_rutina v ON v.id=s.version_rutina_id SET er.series=p_series,er.repeticiones_min=p_rep_min,er.repeticiones_max=p_rep_max,er.peso=p_peso,er.descanso_segundos=p_descanso,er.indicaciones=NULLIF(TRIM(p_indicaciones),''),er.updated_at=CURRENT_TIMESTAMP WHERE er.id=p_id AND v.publicada_at IS NULL; IF ROW_COUNT()=0 THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='El ejercicio no puede editarse'; END IF; END$$
+DROP PROCEDURE IF EXISTS sp_rutinas_reordenar_ejercicios$$
+CREATE PROCEDURE sp_rutinas_reordenar_ejercicios(IN p_ids JSON)
+BEGIN
+ DECLARE v_sesion BIGINT UNSIGNED;
+ DECLARE v_index INT DEFAULT 0;
+ DECLARE v_len INT DEFAULT 0;
+ DECLARE v_id BIGINT UNSIGNED;
+
+ DROP TEMPORARY TABLE IF EXISTS tmp_rutinas_reordenar;
+ CREATE TEMPORARY TABLE tmp_rutinas_reordenar (
+   id BIGINT UNSIGNED NOT NULL,
+   pos INT UNSIGNED NOT NULL,
+   PRIMARY KEY (id)
+ ) ENGINE=Memory;
+
+ SET v_len = JSON_LENGTH(p_ids);
+ WHILE v_index < v_len DO
+   SET v_id = CAST(JSON_EXTRACT(p_ids, CONCAT('$[', v_index, ']')) AS UNSIGNED);
+   INSERT INTO tmp_rutinas_reordenar (id, pos) VALUES (v_id, v_index + 1);
+   SET v_index = v_index + 1;
+ END WHILE;
+
+ SELECT er.sesion_rutina_id INTO v_sesion
+ FROM ejercicios_rutina er
+ JOIN sesiones_rutina s ON s.id=er.sesion_rutina_id
+ JOIN versiones_rutina v ON v.id=s.version_rutina_id
+ JOIN tmp_rutinas_reordenar t ON t.id=er.id
+ WHERE v.publicada_at IS NULL
+ LIMIT 1;
+
+ IF v_sesion IS NULL THEN
+   SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Los ejercicios no pueden reordenarse';
+ END IF;
+
+ UPDATE ejercicios_rutina SET orden=orden+10000 WHERE sesion_rutina_id=v_sesion;
+ UPDATE ejercicios_rutina er
+ JOIN tmp_rutinas_reordenar t ON t.id=er.id
+ SET er.orden=t.pos
+ WHERE er.sesion_rutina_id=v_sesion;
 END$$
 DELIMITER ;

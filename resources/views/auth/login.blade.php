@@ -1,8 +1,8 @@
 <!doctype html>
-<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="csrf-token" content="{{ csrf_token() }}"><title>Iniciar sesión · FitControl</title>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="csrf-token" content="{{ csrf_token() }}"><title>Iniciar sesión · FitControl</title><link rel="icon" type="image/svg+xml" href="{{ asset('images/image.svg') }}"><link rel="apple-touch-icon" href="{{ asset('images/image.svg') }}">
 @vite(['resources/css/app.css', 'resources/js/app.js'])<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet"><link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css" rel="stylesheet"></head>
 <body class="bg-body-tertiary"><main class="min-vh-100 d-flex align-items-center justify-content-center p-3"><div class="card border-0 shadow-lg" style="width:min(100%,430px)"><div class="card-body p-4 p-md-5">
-<div class="text-center mb-4"><span class="d-inline-flex align-items-center justify-content-center rounded-4 bg-primary text-white mb-3" style="width:64px;height:64px"><i class="bi bi-heart-pulse-fill fs-2"></i></span><h1 class="h3">Bienvenido a FitControl</h1><p class="text-muted">Ingrese sus credenciales para continuar.</p></div>
+<div class="text-center mb-4"><img src="{{ asset('images/image.svg') }}" alt="FitControl" class="fitcontrol-logo auth-logo mb-3"><h1 class="h3">Bienvenido a FitControl</h1><p class="text-muted">Ingrese sus credenciales para continuar.</p></div>
 @if(session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
 @if($errors->any())<div class="alert alert-danger">{{ $errors->first() }}</div>@endif
 <form method="POST" action="{{ route('login.store') }}">@csrf

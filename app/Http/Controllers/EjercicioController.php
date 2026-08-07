@@ -20,7 +20,7 @@ class EjercicioController extends Controller
     {
         $f = $r->validated();
 
-        return view('ejercicios.index', ['ejercicios' => $this->service->paginar($f, (int) ($f['por_pagina'] ?? 15), (int) ($f['page'] ?? 1)), 'filtros' => $f, 'patrones' => $this->service->patrones(), ...$this->opciones()]);
+        return view('ejercicios.index', ['ejercicios' => $this->service->paginar($f, (int) ($f['por_pagina'] ?? 15), (int) ($f['page'] ?? 1)), 'filtros' => $f, ...$this->opciones()]);
     }
 
     public function create(): View
@@ -30,14 +30,15 @@ class EjercicioController extends Controller
 
     public function store(StoreEjercicioRequest $r): RedirectResponse
     {
-        $e = $this->service->crear($r->validated());
-
+        $data = $r->validated();
+        $e = $this->service->crear($data);
+        $this->service->sincronizarEquipamientos((int) $e->id, $data['equipamiento_ids'] ?? []);
         return redirect()->route('ejercicios.show', $e->id)->with('success', 'Ejercicio creado.');
     }
 
     public function show(int $ejercicio): View
     {
-        return view('ejercicios.show', ['ejercicio' => $this->service->obtener($ejercicio), 'asignados' => $this->service->grupos($ejercicio), ...$this->opciones()]);
+        return view('ejercicios.show', ['ejercicio' => $this->service->obtener($ejercicio), ...$this->opciones()]);
     }
 
     public function edit(int $ejercicio): View
@@ -47,7 +48,9 @@ class EjercicioController extends Controller
 
     public function update(UpdateEjercicioRequest $r, int $ejercicio): RedirectResponse
     {
-        $this->service->actualizar($ejercicio, $r->validated());
+        $data = $r->validated();
+        $this->service->actualizar($ejercicio, $data);
+        $this->service->sincronizarEquipamientos($ejercicio, $data['equipamiento_ids'] ?? []);
 
         return redirect()->route('ejercicios.show', $ejercicio)->with('success', 'Ejercicio actualizado.');
     }
@@ -62,7 +65,7 @@ class EjercicioController extends Controller
     public function asignarGrupo(AsignarGrupoMuscularRequest $r, int $ejercicio): RedirectResponse
     {
         $d = $r->validated();
-        $this->service->asignarGrupoMuscular($ejercicio, $d['grupo_muscular_id'], $d['es_principal'] ?? false);
+        $this->service->asignarGrupoMuscular($ejercicio, $d['grupo_muscular_id']);
 
         return back()->with('success', 'Grupo asignado.');
     }
@@ -83,6 +86,6 @@ class EjercicioController extends Controller
 
     private function opciones(): array
     {
-        return ['estados' => $this->catalogos->listar('estados_ejercicio'), 'grupos' => $this->catalogos->listar('grupos_musculares')];
+        return ['estados' => $this->catalogos->listar('estados_ejercicio'), 'grupos' => $this->catalogos->listar('grupos_musculares'), 'equipamientos' => $this->service->equipamientosActivos()];
     }
 }

@@ -8,6 +8,7 @@ use App\Http\Requests\Pago\StorePagoRequest;
 use App\Services\CatalogoService;
 use App\Services\PagoService;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class PagoController extends Controller
@@ -21,9 +22,9 @@ class PagoController extends Controller
         return view('pagos.index', ['pagos' => $this->service->paginar($f, (int) ($f['por_pagina'] ?? 15), (int) ($f['page'] ?? 1)), 'filtros' => $f, 'resumen' => $this->service->resumen(), ...$this->opciones()]);
     }
 
-    public function create(): View
+    public function create(Request $request): View
     {
-        return view('pagos.create', ['membresias' => $this->service->membresiasPendientes(), ...$this->opciones()]);
+        return view('pagos.create', ['membresias' => $this->service->membresiasPendientes(), 'membresiaSeleccionada' => $request->integer('membresia'), ...$this->opciones()]);
     }
 
     public function store(StorePagoRequest $r): RedirectResponse

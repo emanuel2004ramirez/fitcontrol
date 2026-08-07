@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class GrupoMuscular extends Catalogo
 {
@@ -15,8 +15,5 @@ class GrupoMuscular extends Catalogo
         return ['activo' => 'boolean'];
     }
 
-    public function ejercicios(): BelongsToMany
-    {
-        return $this->belongsToMany(Ejercicio::class, 'ejercicio_grupo_muscular')->withPivot('es_principal')->withTimestamps();
-    }
+    public function ejercicios(): HasMany { return $this->hasMany(Ejercicio::class); }
 }

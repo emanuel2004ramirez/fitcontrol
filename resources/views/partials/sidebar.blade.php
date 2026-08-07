@@ -1,6 +1,7 @@
 @php
     $permissions = session('permissions', []);
     $hasPermission = static fn (string $permission): bool => in_array('*', $permissions, true) || in_array($permission, $permissions, true);
+    
     $menu = [
         ['label' => 'Clientes', 'icon' => 'bi-people', 'permission' => 'clientes.viewAny', 'route' => 'clientes.index'],
         ['label' => 'Membresías', 'icon' => 'bi-card-checklist', 'permission' => 'membresias.viewAny', 'route' => 'membresias.index'],
@@ -10,16 +11,28 @@
         ['label' => 'Evaluaciones', 'icon' => 'bi-activity', 'permission' => 'evaluaciones.viewAny', 'route' => 'evaluaciones.index'],
         ['label' => 'Ejercicios', 'icon' => 'bi-person-arms-up', 'permission' => 'ejercicios.viewAny', 'route' => 'ejercicios.index'],
         ['label' => 'Personal', 'icon' => 'bi-person-badge', 'permission' => 'personal.viewAny', 'route' => 'personal.index'],
+        ['label' => 'Usuarios', 'icon' => 'bi-person-lock', 'permission' => 'usuarios.viewAny', 'route' => 'usuarios.index'],
         ['label' => 'Reportes', 'icon' => 'bi-bar-chart-line', 'permission' => 'reportes.viewAny', 'route' => 'reportes.index'],
         ['label' => 'Auditoría', 'icon' => 'bi-shield-lock', 'permission' => 'auditoria.viewAny', 'route' => 'auditoria.index'],
+    ];
+
+    $catalogos = [
+        ['label' => 'Sexos', 'route' => 'catalogos.sexos.index'],
+        ['label' => 'Estados de clientes', 'route' => 'catalogos.estados-cliente.index'],
+        ['label' => 'Estados de membresías', 'route' => 'catalogos.estados-membresias.index'],
+        ['label' => 'Estados de cobro y pago', 'route' => 'catalogos.estados-pagos.index'],
+        ['label' => 'Métodos de pago', 'route' => 'catalogos.metodos-pago.index'],
+        ['label' => 'Cargos del personal', 'route' => 'catalogos.cargos-personal.index'],
+        ['label' => 'Grupos musculares', 'route' => 'catalogos.grupos-musculares.index'],
+        ['label' => 'Tipos de medidas físicas', 'route' => 'catalogos.tipos-medida.index'],
+        ['label' => 'Tipos y precios de membresía', 'route' => 'catalogos.tipos-membresia.index'],
     ];
 @endphp
 
 <aside class="app-sidebar" id="appSidebar" aria-label="Navegación principal">
     <div class="sidebar-brand">
         <a href="{{ route('dashboard') }}" class="brand-link">
-            <span class="brand-mark"><i class="bi bi-heart-pulse-fill"></i></span>
-            <span><strong>Fit</strong>Control</span>
+            <img src="{{ asset('images/image.svg') }}" alt="FitControl" class="fitcontrol-logo sidebar-logo">
         </a>
         <button type="button" class="btn sidebar-close d-lg-none" data-sidebar-close aria-label="Cerrar menú"><i class="bi bi-x-lg"></i></button>
     </div>
@@ -41,6 +54,34 @@
                     />
                 @endif
             @endforeach
+        @endif
+
+        {{-- Solo se muestra si el usuario tiene permiso total ('*') -> Superadmin --}}
+        @if ($hasPermission('*'))
+            <span class="sidebar-heading mt-4">Configuración</span>
+            <div class="accordion px-3" id="accordionCatalogos">
+                <div class="accordion-item bg-transparent border-0">
+                    <h2 class="accordion-header" id="headingCatalogos">
+                        <button class="accordion-button collapsed px-2 py-2 bg-transparent shadow-none text-light" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCatalogos" aria-expanded="false" aria-controls="collapseCatalogos">
+                            <i class="bi bi-gear-fill me-2"></i> Catálogos
+                        </button>
+                    </h2>
+                    <div id="collapseCatalogos" class="accordion-collapse collapse" aria-labelledby="headingCatalogos" data-bs-parent="#accordionCatalogos">
+                        <div class="accordion-body p-0 ps-3">
+                            <ul class="nav flex-column">
+                                @foreach ($catalogos as $cat)
+                                    <li class="nav-item">
+                                        <a class="nav-link py-1 small text-white-50 {{ !Route::has($cat['route']) ? 'disabled' : '' }}" 
+                                           href="{{ Route::has($cat['route']) ? route($cat['route']) : '#' }}">
+                                            {{ $cat['label'] }}
+                                        </a>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
         @endif
     </nav>
 

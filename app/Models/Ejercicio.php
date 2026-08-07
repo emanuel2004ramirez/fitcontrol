@@ -13,7 +13,7 @@ class Ejercicio extends Model
 {
     use SoftDeletes;
 
-    protected $fillable = ['codigo', 'estado_ejercicio_id', 'nombre', 'patron_movimiento', 'equipamiento', 'descripcion', 'instrucciones', 'video_url'];
+    protected $fillable = ['codigo', 'estado_ejercicio_id', 'grupo_muscular_id', 'nombre', 'descripcion', 'instrucciones', 'video_url'];
 
     protected function casts(): array
     {
@@ -35,10 +35,9 @@ class Ejercicio extends Model
         return $this->belongsTo(EstadoEjercicio::class, 'estado_ejercicio_id');
     }
 
-    public function gruposMusculares(): BelongsToMany
-    {
-        return $this->belongsToMany(GrupoMuscular::class, 'ejercicio_grupo_muscular')->withPivot('es_principal')->withTimestamps();
-    }
+    public function equipamientos(): BelongsToMany { return $this->belongsToMany(Equipamiento::class, 'ejercicio_equipamiento')->withTimestamps(); }
+
+    public function grupoMuscular(): BelongsTo { return $this->belongsTo(GrupoMuscular::class); }
 
     public function prescripciones(): HasMany
     {
@@ -50,8 +49,4 @@ class Ejercicio extends Model
         return $this->hasMany(SerieRealizada::class);
     }
 
-    public function grupoPrincipal(): ?GrupoMuscular
-    {
-        return $this->gruposMusculares->firstWhere('pivot.es_principal', true);
-    }
 }

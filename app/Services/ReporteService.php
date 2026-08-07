@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Support\Reports\ReportDefinition;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class ReporteService extends StoredProcedureService
 {
@@ -10,12 +11,27 @@ class ReporteService extends StoredProcedureService
     {
         ReportDefinition::get($tipo);
 
-        return $this->select('sp_reportes_generar', [$tipo, $filtros['desde'] ?? null, $filtros['hasta'] ?? null, $filtros['busqueda'] ?? null, $filtros['estado_id'] ?? null]);
+        return $this->select('sp_reportes_generar', [$tipo, $filtros['desde'] ?? null, $filtros['hasta'] ?? null, $filtros['busqueda'] ?? null, $filtros['estado_id'] ?? null, 10000, 0]);
+    }
+
+    public function paginar(string $tipo, array $filtros, int $porPagina, int $pagina): LengthAwarePaginator
+    {
+        ReportDefinition::get($tipo);
+        $parameters = [$tipo, $filtros['desde'] ?? null, $filtros['hasta'] ?? null, $filtros['busqueda'] ?? null, $filtros['estado_id'] ?? null];
+
+        return $this->paginateProcedures('sp_reportes_contar', 'sp_reportes_generar', $parameters, $porPagina, $pagina, $filtros);
+    }
+
+    public function resumen(string $tipo, array $filtros): ?object
+    {
+        ReportDefinition::get($tipo);
+
+        return $this->selectOne('sp_reportes_resumen', [$tipo, $filtros['desde'] ?? null, $filtros['hasta'] ?? null, $filtros['busqueda'] ?? null, $filtros['estado_id'] ?? null]);
     }
 
     public function estados(string $tipo): array
     {
-        $catalogo = ['clientes' => 'estados_cliente', 'personal' => 'estados_personal', 'pagos' => 'estados_pago', 'cobros' => 'estados_cargo_cobro', 'membresias' => 'estados_membresia'][$tipo] ?? null;
+        $catalogo = ['clientes' => 'estados_cliente', 'personal' => 'estados_personal', 'pagos' => 'estados_pago', 'membresias' => 'estados_membresia'][$tipo] ?? null;
 
         return $catalogo ? $this->select("sp_{$catalogo}_listar", [null, 100, 0]) : [];
     }
@@ -38,11 +54,6 @@ class ReporteService extends StoredProcedureService
     public function ingresos(string $desde, string $hasta): array
     {
         return $this->select('sp_reporte_ingresos', [$desde, $hasta]);
-    }
-
-    public function cuentasPorCobrar(?int $clienteId = null): array
-    {
-        return $this->select('sp_reporte_cuentas_por_cobrar', [$clienteId]);
     }
 
     public function asistenciaDiaria(string $desde, string $hasta): array

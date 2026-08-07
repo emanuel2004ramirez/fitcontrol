@@ -156,4 +156,97 @@ BEGIN
  SELECT * FROM clientes WHERE id=p_id;
 END$$
 
+DROP PROCEDURE IF EXISTS sp_eventos_cliente_registrar$$
+CREATE PROCEDURE sp_eventos_cliente_registrar(IN p_cliente_id BIGINT UNSIGNED,IN p_tipo VARCHAR(60),IN p_titulo VARCHAR(150),IN p_descripcion TEXT,IN p_entidad VARCHAR(80),IN p_entidad_id BIGINT UNSIGNED,IN p_usuario_id BIGINT UNSIGNED)
+BEGIN
+ INSERT INTO eventos_cliente(cliente_id,tipo,titulo,descripcion,entidad,entidad_id,usuario_id,ocurrido_at,created_at,updated_at) VALUES(p_cliente_id,p_tipo,p_titulo,p_descripcion,p_entidad,p_entidad_id,p_usuario_id,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
+END$$
+
+DROP PROCEDURE IF EXISTS sp_clientes_crear_expediente$$
+CREATE PROCEDURE sp_clientes_crear_expediente(IN p_datos JSON,IN p_usuario_id BIGINT UNSIGNED,IN p_ip VARCHAR(45))
+BEGIN
+ DECLARE v_id BIGINT UNSIGNED; DECLARE v_estado BIGINT UNSIGNED; DECLARE v_correo VARCHAR(150); DECLARE v_nombre VARCHAR(100); DECLARE v_apellido VARCHAR(100);
+ DECLARE EXIT HANDLER FOR SQLEXCEPTION BEGIN ROLLBACK; RESIGNAL; END;
+ SET v_nombre=TRIM(JSON_UNQUOTE(JSON_EXTRACT(p_datos,'$.nombre'))); SET v_apellido=TRIM(JSON_UNQUOTE(JSON_EXTRACT(p_datos,'$.apellido'))); SET v_correo=LOWER(TRIM(JSON_UNQUOTE(JSON_EXTRACT(p_datos,'$.correo_electronico')))); SET v_estado=CAST(JSON_UNQUOTE(JSON_EXTRACT(p_datos,'$.estado_cliente_id')) AS UNSIGNED);
+ IF v_nombre IS NULL OR v_nombre='' OR v_apellido IS NULL OR v_apellido='' OR v_correo IS NULL OR v_correo='' THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Nombre, apellido y correo son obligatorios'; END IF;
+ IF JSON_EXTRACT(p_datos,'$.sexo_id') IS NULL OR JSON_UNQUOTE(JSON_EXTRACT(p_datos,'$.fecha_nacimiento')) IS NULL OR NULLIF(TRIM(JSON_UNQUOTE(JSON_EXTRACT(p_datos,'$.telefono'))),'') IS NULL OR NULLIF(TRIM(JSON_UNQUOTE(JSON_EXTRACT(p_datos,'$.tipo_identificacion'))),'') IS NULL OR NULLIF(TRIM(JSON_UNQUOTE(JSON_EXTRACT(p_datos,'$.numero_identificacion'))),'') IS NULL OR NULLIF(TRIM(JSON_UNQUOTE(JSON_EXTRACT(p_datos,'$.direccion'))),'') IS NULL OR NULLIF(TRIM(JSON_UNQUOTE(JSON_EXTRACT(p_datos,'$.ciudad'))),'') IS NULL THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Todos los datos personales del expediente son obligatorios'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM sexos WHERE id=CAST(JSON_UNQUOTE(JSON_EXTRACT(p_datos,'$.sexo_id')) AS UNSIGNED) AND activo=1) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='El sexo seleccionado no está disponible'; END IF;
+ IF JSON_UNQUOTE(JSON_EXTRACT(p_datos,'$.tipo_identificacion')) NOT IN ('DNI','PASAPORTE','CARNET_RESIDENTE','OTRO') THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='El tipo de identificación no es válido'; END IF;
+ IF JSON_UNQUOTE(JSON_EXTRACT(p_datos,'$.telefono')) NOT REGEXP '^[0-9]{8}$' OR JSON_UNQUOTE(JSON_EXTRACT(p_datos,'$.contacto.telefono')) NOT REGEXP '^[0-9]{8}$' THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Los teléfonos deben contener exactamente 8 números'; END IF;
+ IF JSON_UNQUOTE(JSON_EXTRACT(p_datos,'$.fecha_nacimiento'))>CURRENT_DATE THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='La fecha de nacimiento no puede ser futura'; END IF;
+ IF EXISTS(SELECT 1 FROM clientes WHERE correo_electronico=v_correo) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='El correo electrónico ya está registrado'; END IF;
+ IF EXISTS(SELECT 1 FROM clientes WHERE tipo_identificacion=JSON_UNQUOTE(JSON_EXTRACT(p_datos,'$.tipo_identificacion')) AND numero_identificacion=JSON_UNQUOTE(JSON_EXTRACT(p_datos,'$.numero_identificacion'))) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='La identificación ya pertenece a otro cliente'; END IF;
+ IF JSON_UNQUOTE(JSON_EXTRACT(p_datos,'$.contacto.nombre_completo')) IS NULL OR JSON_UNQUOTE(JSON_EXTRACT(p_datos,'$.contacto.telefono')) IS NULL THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='El contacto de emergencia es obligatorio'; END IF;
+ IF COALESCE(CAST(JSON_UNQUOTE(JSON_EXTRACT(p_datos,'$.consentimiento.aceptado')) AS UNSIGNED),0)<>1 THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Debe aceptar el consentimiento de privacidad'; END IF;
+ START TRANSACTION;
+ INSERT INTO clientes(numero_socio,sexo_id,estado_cliente_id,nombre,apellido,tipo_identificacion,numero_identificacion,telefono,correo_electronico,direccion,ciudad,fecha_nacimiento,fecha_registro,created_at,updated_at)
+ VALUES(CONCAT('TMP-',UUID_SHORT()),CAST(JSON_UNQUOTE(JSON_EXTRACT(p_datos,'$.sexo_id')) AS UNSIGNED),CAST(JSON_UNQUOTE(JSON_EXTRACT(p_datos,'$.estado_cliente_id')) AS UNSIGNED),v_nombre,v_apellido,NULLIF(JSON_UNQUOTE(JSON_EXTRACT(p_datos,'$.tipo_identificacion')),''),NULLIF(JSON_UNQUOTE(JSON_EXTRACT(p_datos,'$.numero_identificacion')),''),NULLIF(JSON_UNQUOTE(JSON_EXTRACT(p_datos,'$.telefono')),''),v_correo,NULLIF(JSON_UNQUOTE(JSON_EXTRACT(p_datos,'$.direccion')),''),NULLIF(JSON_UNQUOTE(JSON_EXTRACT(p_datos,'$.ciudad')),''),JSON_UNQUOTE(JSON_EXTRACT(p_datos,'$.fecha_nacimiento')),CURRENT_DATE,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
+ SET v_id=LAST_INSERT_ID(); UPDATE clientes SET numero_socio=CONCAT('CLI-',LPAD(v_id,6,'0')) WHERE id=v_id;
+ INSERT INTO contactos_emergencia(cliente_id,nombre_completo,parentesco,telefono,es_principal,created_at,updated_at) VALUES(v_id,TRIM(JSON_UNQUOTE(JSON_EXTRACT(p_datos,'$.contacto.nombre_completo'))),TRIM(JSON_UNQUOTE(JSON_EXTRACT(p_datos,'$.contacto.parentesco'))),TRIM(JSON_UNQUOTE(JSON_EXTRACT(p_datos,'$.contacto.telefono'))),1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
+ INSERT INTO datos_medicos_cliente(cliente_id,condiciones_medicas,alergias,medicamentos,restricciones_ejercicio,contacto_medico,es_confidencial,actualizado_at,actualizado_por,created_at,updated_at) VALUES(v_id,NULLIF(JSON_UNQUOTE(JSON_EXTRACT(p_datos,'$.medico.condiciones_medicas')),''),NULLIF(JSON_UNQUOTE(JSON_EXTRACT(p_datos,'$.medico.alergias')),''),NULLIF(JSON_UNQUOTE(JSON_EXTRACT(p_datos,'$.medico.medicamentos')),''),NULLIF(JSON_UNQUOTE(JSON_EXTRACT(p_datos,'$.medico.restricciones_ejercicio')),''),NULLIF(JSON_UNQUOTE(JSON_EXTRACT(p_datos,'$.medico.contacto_medico')),''),1,CURRENT_TIMESTAMP,p_usuario_id,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
+ INSERT INTO consentimientos_cliente(cliente_id,tipo,version_documento,aceptado,registrado_at,ip,registrado_por,created_at,updated_at) VALUES(v_id,'PRIVACIDAD_DATOS','1.0',1,CURRENT_TIMESTAMP,p_ip,p_usuario_id,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
+ INSERT INTO historial_estados_cliente(cliente_id,estado_nuevo_id,motivo,cambiado_por,cambiado_at,created_at,updated_at) VALUES(v_id,v_estado,'Alta de cliente',p_usuario_id,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
+ INSERT INTO eventos_cliente(cliente_id,tipo,titulo,descripcion,entidad,entidad_id,usuario_id,ocurrido_at,created_at,updated_at) VALUES(v_id,'CLIENTE_REGISTRADO','Cliente registrado','Expediente inicial completado','clientes',v_id,p_usuario_id,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),(v_id,'CONTACTO_AGREGADO','Contacto de emergencia agregado',JSON_UNQUOTE(JSON_EXTRACT(p_datos,'$.contacto.nombre_completo')),'contactos_emergencia',LAST_INSERT_ID(),p_usuario_id,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),(v_id,'CONSENTIMIENTO_ACEPTADO','Consentimiento de privacidad aceptado','Versión 1.0','consentimientos_cliente',NULL,p_usuario_id,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
+ COMMIT; SELECT * FROM clientes WHERE id=v_id;
+END$$
+
+DROP PROCEDURE IF EXISTS sp_clientes_linea_tiempo$$
+CREATE PROCEDURE sp_clientes_linea_tiempo(IN p_cliente_id BIGINT UNSIGNED)
+BEGIN SELECT id,tipo,titulo,descripcion,entidad,entidad_id,usuario_id,ocurrido_at FROM eventos_cliente WHERE cliente_id=p_cliente_id ORDER BY ocurrido_at DESC,id DESC LIMIT 200; END$$
+DELIMITER ;
+
+
+DELIMITER $$
+
+DROP PROCEDURE IF EXISTS sp_estados_cliente_listar$$
+CREATE PROCEDURE sp_estados_cliente_listar(
+    IN p_buscar VARCHAR(255),
+    IN p_limite INT,
+    IN p_offset INT
+)
+BEGIN
+    SELECT id, codigo, nombre, activo, es_terminal, orden, created_at, updated_at
+    FROM estados_cliente
+    WHERE (p_buscar IS NULL OR p_buscar = '' OR codigo LIKE CONCAT('%', p_buscar, '%') OR nombre LIKE CONCAT('%', p_buscar, '%'))
+    ORDER BY orden ASC, nombre ASC
+    LIMIT p_limite OFFSET p_offset;
+END $$
+DROP PROCEDURE IF EXISTS sp_estados_cliente_crear$$
+CREATE PROCEDURE sp_estados_cliente_crear(
+    IN p_codigo VARCHAR(30),
+    IN p_nombre VARCHAR(50),
+    IN p_activo TINYINT,
+    IN p_es_terminal TINYINT,
+    IN p_orden SMALLINT
+)
+BEGIN
+    INSERT INTO estados_cliente (codigo, nombre, activo, es_terminal, orden, created_at, updated_at)
+    VALUES (p_codigo, p_nombre, p_activo, p_es_terminal, p_orden, NOW(), NOW());
+END $$
+DROP PROCEDURE IF EXISTS sp_estados_cliente_actualizar$$
+CREATE PROCEDURE sp_estados_cliente_actualizar(
+    IN p_id BIGINT,
+    IN p_codigo VARCHAR(30),
+    IN p_nombre VARCHAR(50),
+    IN p_activo TINYINT,
+    IN p_es_terminal TINYINT,
+    IN p_orden SMALLINT
+)
+BEGIN
+    UPDATE estados_cliente
+    SET codigo = p_codigo,
+        nombre = p_nombre,
+        activo = p_activo,
+        es_terminal = p_es_terminal,
+        orden = p_orden,
+        updated_at = NOW()
+    WHERE id = p_id;
+END $$
+DROP PROCEDURE IF EXISTS sp_estados_cliente_eliminar$$
+CREATE PROCEDURE sp_estados_cliente_eliminar(
+    IN p_id BIGINT
+)
+BEGIN
+    DELETE FROM estados_cliente WHERE id = p_id;
+END $$
 DELIMITER ;

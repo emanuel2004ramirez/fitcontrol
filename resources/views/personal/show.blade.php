@@ -43,6 +43,7 @@
 <ul class="nav nav-tabs mb-3" role="tablist">
     <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#cargos" type="button">Historial de cargos</button></li>
     <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#horarios" type="button">Horarios</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#evaluaciones" type="button">Evaluaciones de desempeño</button></li>
     <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#estados" type="button">Historial de estados</button></li>
 </ul>
 
@@ -82,6 +83,34 @@
                 </td></tr>
                 @if($can('personal.manage') && !$horario->vigente_hasta)<tr class="collapse" id="editar-horario-{{ $horario->id }}"><td colspan="4"><form method="POST" action="{{ route('personal.horarios.store', $personal->id) }}" class="row g-2">@csrf<input type="hidden" name="id" value="{{ $horario->id }}"><input type="hidden" name="personal_id" value="{{ $personal->id }}"><div class="col"><select class="form-select" name="dia_semana">@foreach(['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'] as $i => $dia)<option value="{{ $i + 1 }}" @selected($horario->dia_semana == $i + 1)>{{ $dia }}</option>@endforeach</select></div><div class="col"><input type="time" class="form-control" name="hora_inicio" value="{{ substr($horario->hora_inicio, 0, 5) }}" required></div><div class="col"><input type="time" class="form-control" name="hora_fin" value="{{ substr($horario->hora_fin, 0, 5) }}" required></div><div class="col"><input type="date" class="form-control" name="vigente_desde" value="{{ $horario->vigente_desde }}" required></div><div class="col"><input type="date" class="form-control" name="vigente_hasta" value="{{ $horario->vigente_hasta }}"></div><div class="col-auto"><x-button type="submit">Guardar</x-button></div></form></td></tr>@endif
                 @empty<tr><td colspan="4" class="text-center text-muted py-4">Sin horarios registrados.</td></tr>@endforelse
+            </tbody></table></div>
+        </x-card>
+    </div>
+
+    <div class="tab-pane fade" id="evaluaciones">
+        <x-card title="Evaluaciones de desempeño">
+            @if($can('personal.manage'))
+                <form method="POST" action="{{ route('personal.evaluaciones-desempeno.store', $personal->id) }}" class="row g-3 border-bottom pb-4 mb-3">@csrf
+                    <div class="col-md-3"><label class="form-label" for="periodo_inicio">Periodo desde</label><input type="date" class="form-control" id="periodo_inicio" name="periodo_inicio" required></div>
+                    <div class="col-md-3"><label class="form-label" for="periodo_fin">Periodo hasta</label><input type="date" class="form-control" id="periodo_fin" name="periodo_fin" required></div>
+                    <div class="col-md-3"><label class="form-label" for="fecha_evaluacion">Fecha de evaluacion</label><input type="date" class="form-control" id="fecha_evaluacion" name="fecha_evaluacion" value="{{ now()->toDateString() }}" max="{{ now()->toDateString() }}" required></div>
+                    <div class="col-md-3 d-flex align-items-end"><x-button type="submit" class="w-100">Registrar</x-button></div>
+                    <div class="col-md-2"><label class="form-label" for="puntualidad">Puntualidad</label><select class="form-select" id="puntualidad" name="puntualidad" required>@for($i = 5; $i >= 1; $i--)<option value="{{ $i }}">{{ $i }}</option>@endfor</select></div>
+                    <div class="col-md-2"><label class="form-label" for="responsabilidad">Responsabilidad</label><select class="form-select" id="responsabilidad" name="responsabilidad" required>@for($i = 5; $i >= 1; $i--)<option value="{{ $i }}">{{ $i }}</option>@endfor</select></div>
+                    <div class="col-md-2"><label class="form-label" for="atencion_cliente">Atencion</label><select class="form-select" id="atencion_cliente" name="atencion_cliente" required>@for($i = 5; $i >= 1; $i--)<option value="{{ $i }}">{{ $i }}</option>@endfor</select></div>
+                    <div class="col-md-2"><label class="form-label" for="trabajo_equipo">Equipo</label><select class="form-select" id="trabajo_equipo" name="trabajo_equipo" required>@for($i = 5; $i >= 1; $i--)<option value="{{ $i }}">{{ $i }}</option>@endfor</select></div>
+                    <div class="col-md-2"><label class="form-label" for="rendimiento">Rendimiento</label><select class="form-select" id="rendimiento" name="rendimiento" required>@for($i = 5; $i >= 1; $i--)<option value="{{ $i }}">{{ $i }}</option>@endfor</select></div>
+                    <div class="col-md-12"><label class="form-label" for="comentarios">Comentarios</label><textarea class="form-control" id="comentarios" name="comentarios" rows="2" maxlength="1000" placeholder="Observaciones del gerente o administrador"></textarea></div>
+                </form>
+            @endif
+            <div class="table-responsive"><table class="table align-middle"><thead><tr><th>Periodo</th><th>Evaluador</th><th>Promedio</th><th>Estado</th><th>Comentarios</th><th class="text-end">Acciones</th></tr></thead><tbody>
+                @forelse($evaluacionesDesempeno as $evaluacion)<tr><td>{{ \Illuminate\Support\Carbon::parse($evaluacion->periodo_inicio)->format('d/m/Y') }} - {{ \Illuminate\Support\Carbon::parse($evaluacion->periodo_fin)->format('d/m/Y') }}<div class="text-muted small">{{ \Illuminate\Support\Carbon::parse($evaluacion->fecha_evaluacion)->format('d/m/Y') }}</div></td><td>{{ $evaluacion->evaluador ?: 'No registrado' }}</td><td><span class="badge text-bg-{{ $evaluacion->promedio >= 4 ? 'success' : ($evaluacion->promedio >= 3 ? 'warning' : 'danger') }}">{{ number_format((float) $evaluacion->promedio, 2) }}/5</span></td><td><span class="badge text-bg-{{ $evaluacion->estado === 'aprobada' ? 'primary' : 'secondary' }}">{{ ucfirst($evaluacion->estado) }}</span></td><td>{{ $evaluacion->comentarios ?: 'Sin comentarios' }}</td><td class="text-end">
+                    @if($can('personal.manage') && $evaluacion->estado !== 'aprobada')
+                        <form method="POST" action="{{ route('personal.evaluaciones-desempeno.aprobar', [$personal->id, $evaluacion->id]) }}" class="d-inline" onsubmit="return confirm('¿Aprobar esta evaluación de desempeño?')">@csrf @method('PATCH')<button class="btn btn-sm btn-outline-primary" title="Aprobar"><i class="bi bi-check2-circle"></i></button></form>
+                    @elseif($evaluacion->aprobador)
+                        <small class="text-muted">Aprobada por {{ $evaluacion->aprobador }}</small>
+                    @endif
+                </td></tr>@empty<tr><td colspan="6" class="text-center text-muted py-4">Sin evaluaciones registradas.</td></tr>@endforelse
             </tbody></table></div>
         </x-card>
     </div>

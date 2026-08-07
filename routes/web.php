@@ -3,6 +3,7 @@
 use App\Http\Controllers\AsistenciaController;
 use App\Http\Controllers\AuditoriaController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\ForcedPasswordController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EjercicioController;
@@ -12,6 +13,7 @@ use App\Http\Controllers\PagoController;
 use App\Http\Controllers\PersonalController;
 use App\Http\Controllers\ReporteController;
 use App\Http\Controllers\RutinaController;
+use App\Http\Controllers\UsuarioController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function (): void {
@@ -22,6 +24,19 @@ Route::middleware('guest')->group(function (): void {
 Route::middleware('auth')->group(function (): void {
     Route::redirect('/', '/dashboard');
     Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
+    Route::get('/cambiar-contrasena', [ForcedPasswordController::class, 'edit'])->name('password.change.edit');
+    Route::put('/cambiar-contrasena', [ForcedPasswordController::class, 'update'])->name('password.change.update');
+
+    Route::prefix('usuarios')->name('usuarios.')->controller(UsuarioController::class)->group(function (): void {
+        Route::get('/', 'index')->middleware('permission:usuarios.viewAny')->name('index');
+        Route::get('/crear', 'create')->middleware('permission:usuarios.create')->name('create');
+        Route::post('/', 'store')->middleware('permission:usuarios.create')->name('store');
+        Route::get('/{usuario}', 'show')->middleware('permission:usuarios.view')->name('show')->whereNumber('usuario');
+        Route::put('/{usuario}/password', 'cambiarPassword')->middleware('permission:usuarios.manage')->name('password')->whereNumber('usuario');
+        Route::post('/{usuario}/roles', 'asignarRol')->middleware('permission:usuarios.manage')->name('roles.store')->whereNumber('usuario');
+        Route::delete('/{usuario}/roles', 'retirarRol')->middleware('permission:usuarios.manage')->name('roles.destroy')->whereNumber('usuario');
+        Route::delete('/{usuario}', 'destroy')->middleware('permission:usuarios.delete')->name('destroy')->whereNumber('usuario');
+    });
 
     Route::prefix('auditoria')->name('auditoria.')->controller(AuditoriaController::class)->group(function (): void {
         Route::get('/', 'index')->middleware('permission:auditoria.viewAny')->name('index');
@@ -38,10 +53,8 @@ Route::middleware('auth')->group(function (): void {
     });
     Route::prefix('asistencias')->name('asistencias.')->controller(AsistenciaController::class)->group(function (): void {
         Route::get('/', 'index')->middleware('permission:asistencias.viewAny')->name('index');
-        Route::get('/entrada', 'create')->middleware('permission:asistencias.create')->name('create');
         Route::post('/', 'store')->middleware('permission:asistencias.create')->name('store');
-        Route::get('/{asistencia}', 'show')->middleware('permission:asistencias.view')->name('show')->whereNumber('asistencia');
-        Route::patch('/{asistencia}/salida', 'registrarSalida')->middleware('permission:asistencias.update')->name('salida')->whereNumber('asistencia');
+        Route::put('/{asistencia}', 'update')->middleware('permission:asistencias.update')->name('update')->whereNumber('asistencia');
     });
     Route::prefix('evaluaciones')->name('evaluaciones.')->controller(EvaluacionFisicaController::class)->group(function (): void {
         Route::get('/', 'index')->middleware('permission:evaluaciones.viewAny')->name('index');
@@ -54,6 +67,8 @@ Route::middleware('auth')->group(function (): void {
 
     Route::prefix('rutinas')->name('rutinas.')->controller(RutinaController::class)->group(function (): void {
         Route::get('/', 'index')->middleware('permission:rutinas.viewAny')->name('index');
+        Route::get('/planificador', 'planificador')->middleware('permission:rutinas.viewAny')->name('planificador');
+        Route::post('/planificador', 'guardarPlanificador')->middleware('permission:rutinas.manage')->name('planificador.guardar');
         Route::get('/crear', 'create')->middleware('permission:rutinas.create')->name('create');
         Route::post('/', 'store')->middleware('permission:rutinas.create')->name('store');
         Route::get('/{rutina}', 'show')->middleware('permission:rutinas.view')->name('show')->whereNumber('rutina');
@@ -65,6 +80,11 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/{rutina}/sesiones', 'agregarSesion')->middleware('permission:rutinas.manage')->name('sesiones.store');
         Route::delete('/{rutina}/sesiones/{sesion}', 'eliminarSesion')->middleware('permission:rutinas.manage')->name('sesiones.destroy');
         Route::post('/{rutina}/ejercicios', 'agregarEjercicio')->middleware('permission:rutinas.manage')->name('ejercicios.store');
+        Route::post('/{rutina}/ejercicios/lote', 'agregarEjercicios')->middleware('permission:rutinas.manage')->name('ejercicios.batch');
+        Route::get('/{rutina}/ejecutar', 'ejecutar')->middleware('permission:rutinas.manage')->name('ejecutar');
+        Route::post('/{rutina}/ejecutar', 'guardarEjecucion')->middleware('permission:rutinas.manage')->name('ejecutar.guardar');
+        Route::put('/{rutina}/ejercicios/orden', 'reordenarEjercicios')->middleware('permission:rutinas.manage')->name('ejercicios.order');
+        Route::put('/{rutina}/ejercicios/{detalle}', 'actualizarEjercicio')->middleware('permission:rutinas.manage')->name('ejercicios.update');
         Route::delete('/{rutina}/ejercicios/{detalle}', 'eliminarEjercicio')->middleware('permission:rutinas.manage')->name('ejercicios.destroy');
     });
 
@@ -95,11 +115,15 @@ Route::middleware('auth')->group(function (): void {
         Route::get('/crear', 'create')->middleware('permission:membresias.create')->name('create');
         Route::post('/', 'store')->middleware('permission:membresias.create')->name('store');
         Route::get('/{membresia}', 'show')->middleware('permission:membresias.view')->name('show')->whereNumber('membresia');
+        Route::get('/{membresia}/contrato', 'contratoPdf')->middleware('permission:membresias.view')->name('contrato')->whereNumber('membresia');
         Route::patch('/{membresia}/estado', 'cambiarEstado')->middleware('permission:membresias.changeStatus')->name('estado')->whereNumber('membresia');
         Route::post('/{membresia}/renovar', 'renovar')->middleware('permission:membresias.manage')->name('renovar')->whereNumber('membresia');
         Route::post('/{membresia}/congelar', 'congelar')->middleware('permission:membresias.manage')->name('congelar')->whereNumber('membresia');
         Route::post('/{membresia}/reactivar', 'reactivar')->middleware('permission:membresias.manage')->name('reactivar')->whereNumber('membresia');
         Route::post('/{membresia}/cancelar', 'cancelar')->middleware('permission:membresias.changeStatus')->name('cancelar')->whereNumber('membresia');
+        Route::post('/{membresia}/familia', 'configurarFamilia')->middleware('permission:membresias.manage')->name('familia')->whereNumber('membresia');
+        Route::post('/{membresia}/beneficiarios', 'agregarBeneficiario')->middleware('permission:membresias.manage')->name('beneficiarios.store')->whereNumber('membresia');
+        Route::delete('/{membresia}/beneficiarios/{beneficiario}', 'retirarBeneficiario')->middleware('permission:membresias.manage')->name('beneficiarios.destroy')->whereNumber(['membresia','beneficiario']);
     });
 
     Route::prefix('clientes')->name('clientes.')->controller(ClienteController::class)->group(function (): void {
@@ -129,5 +153,19 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/{personal}/cargo', 'asignarCargo')->middleware('permission:personal.manage')->name('cargo')->whereNumber('personal');
         Route::post('/{personal}/horarios', 'guardarHorario')->middleware('permission:personal.manage')->name('horarios.store')->whereNumber('personal');
         Route::delete('/{personal}/horarios/{horario}', 'eliminarHorario')->middleware('permission:personal.manage')->name('horarios.destroy')->whereNumber(['personal', 'horario']);
+        Route::post('/{personal}/evaluaciones-desempeno', 'guardarEvaluacionDesempeno')->middleware('permission:personal.manage')->name('evaluaciones-desempeno.store')->whereNumber('personal');
+        Route::patch('/{personal}/evaluaciones-desempeno/{evaluacion}/aprobar', 'aprobarEvaluacionDesempeno')->middleware('permission:personal.manage')->name('evaluaciones-desempeno.aprobar')->whereNumber(['personal', 'evaluacion']);
+    });
+
+    Route::prefix('catalogos')->name('catalogos.')->middleware('permission:*')->group(function (): void {
+        Route::resource('sexos', \App\Http\Controllers\Catalogos\SexoController::class)->only(['index', 'store', 'update', 'destroy']);
+        Route::resource('estados-cliente', \App\Http\Controllers\Catalogos\EstadoClienteController::class)->only(['index', 'store', 'update', 'destroy']);
+        Route::resource('estados-membresias', \App\Http\Controllers\Catalogos\EstadoMembresiaController::class);
+        Route::resource('estados-pagos', \App\Http\Controllers\Catalogos\EstadoPagoController::class);
+        Route::resource('metodos-pago', \App\Http\Controllers\Catalogos\MetodoPagoController::class);
+        Route::resource('cargos-personal', \App\Http\Controllers\Catalogos\CargoPersonalController::class);
+        Route::resource('grupos-musculares', \App\Http\Controllers\Catalogos\GrupoMuscularController::class);
+        Route::resource('tipos-medida', \App\Http\Controllers\Catalogos\TipoMedidaController::class);
+        Route::resource('tipos-membresia', \App\Http\Controllers\Catalogos\TipoMembresiaController::class);
     });
 });

@@ -6,6 +6,8 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="theme-color" content="#2563eb">
     <title>@yield('title', 'Dashboard') · {{ config('app.name', 'FitControl') }}</title>
+    <link rel="icon" type="image/svg+xml" href="{{ asset('images/image.svg') }}">
+    <link rel="apple-touch-icon" href="{{ asset('images/image.svg') }}">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

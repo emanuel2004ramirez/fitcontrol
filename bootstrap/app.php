@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\EnsureSessionPermission;
+use App\Http\Middleware\EnsurePasswordIsChanged;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -17,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->appendToGroup('web', EnsurePasswordIsChanged::class);
         $middleware->alias([
             'role' => RoleMiddleware::class,
             'permission' => EnsureSessionPermission::class,

@@ -1,21 +1,16 @@
 @extends('layouts.app')
 @section('title','Nueva membresía')
-@php($breadcrumbs=[['label'=>'Membresías','url'=>route('membresias.index')],['label'=>'Nueva']])
 @section('content')
-<x-page-header title="Nueva membresía" subtitle="La fecha final se calcula automáticamente según la duración del plan."/>
-<x-card>
-<form method="POST" action="{{ route('membresias.store') }}" class="row g-3">@csrf
-    <div class="col-md-6"><label class="form-label">Cliente</label><select class="form-select" name="cliente_id" required><option value="">Seleccione</option>@foreach($clientes as $c)<option value="{{ $c->id }}">{{ $c->numero_socio }} · {{ $c->nombre }}</option>@endforeach</select></div>
-    <div class="col-md-6"><label class="form-label">Plan y precio vigente</label><select class="form-select" name="precio_membresia_id" id="precio" required><option value="">Seleccione</option>@foreach($precios as $p)<option value="{{ $p->id }}" data-tipo="{{ $p->tipo_membresia_id }}" data-dias="{{ $p->duracion_dias }}">{{ $p->tipo }} · {{ number_format($p->precio,2) }} {{ $p->moneda }}</option>@endforeach</select><input type="hidden" name="tipo_membresia_id" id="tipo"></div>
-    <div class="col-md-6"><label class="form-label">Estado inicial</label><select class="form-select" name="estado_membresia_id" required>@foreach($estados as $e)@if(!$e->es_terminal)<option value="{{ $e->id }}">{{ $e->nombre }}</option>@endif @endforeach</select></div>
-    <div class="col-md-6"><label class="form-label">Fecha de inicio</label><input type="date" class="form-control" id="inicio" name="fecha_inicio" value="{{ now()->toDateString() }}" required><div id="fin-ayuda" class="form-text">Seleccione un plan para ver la fecha final.</div></div>
-    <input type="hidden" name="origen" value="NUEVA">
-    <div class="text-end"><x-button :href="route('membresias.index')" variant="outline-secondary" class="me-2">Cancelar</x-button><x-button type="submit">Crear membresía</x-button></div>
-</form>
-</x-card>
-@push('scripts')<script>
-const precio=document.getElementById('precio'),inicio=document.getElementById('inicio'),ayuda=document.getElementById('fin-ayuda');
-function calcular(){const op=precio.selectedOptions[0];document.getElementById('tipo').value=op?.dataset.tipo||'';const dias=Number(op?.dataset.dias||0);if(!inicio.value||!dias){ayuda.textContent='Seleccione un plan para ver la fecha final.';return;}const fin=new Date(inicio.value+'T12:00:00');fin.setDate(fin.getDate()+dias-1);ayuda.textContent='Finaliza automáticamente el '+fin.toLocaleDateString('es-HN');}
-precio.addEventListener('change',calcular);inicio.addEventListener('change',calcular);calcular();
-</script>@endpush
+<x-page-header title="Nueva membresía" subtitle="Venta guiada con contrato y estado pendiente automático."/>
+<x-card><form method="POST" action="{{ route('membresias.store') }}" id="ventaMembresia">@csrf
+<div class="d-flex gap-2 mb-4"><span class="badge text-bg-primary">1. Cliente</span><span class="badge text-bg-light">2. Plan</span><span class="badge text-bg-light">3. Resumen</span><span class="badge text-bg-light">4. Pagar</span></div>
+<div class="row g-3">
+<div class="col-md-6"><label class="form-label">Cliente</label><select class="form-select" name="cliente_id" id="cliente" required><option value="">Seleccione</option>@foreach($clientes as $c)<option value="{{ $c->id }}">{{ $c->numero_socio }} · {{ $c->nombre }}</option>@endforeach</select></div>
+<div class="col-md-6"><label class="form-label">Plan y precio</label><select class="form-select" name="precio_membresia_id" id="precio" required><option value="">Seleccione</option>@foreach($precios as $p)<option value="{{ $p->id }}" data-tipo="{{ $p->tipo_membresia_id }}" data-dias="{{ $p->duracion_dias }}" data-precio="{{ $p->precio }}" data-moneda="{{ $p->moneda }}">{{ $p->tipo }} · {{ number_format($p->precio,2) }} {{ $p->moneda }}</option>@endforeach</select><input type="hidden" name="tipo_membresia_id" id="tipo"></div>
+<div class="col-md-6"><label class="form-label">Fecha de inicio</label><input type="date" class="form-control" name="fecha_inicio" id="inicio" value="{{ now()->toDateString() }}" required></div><div class="col-md-6"><label class="form-label">Fecha final calculada</label><input class="form-control" id="fin" disabled></div>
+</div>
+<div class="card border mt-4" style="background:var(--bs-tertiary-bg);color:var(--bs-body-color)"><div class="card-body"><h5 class="text-body">Resumen</h5><div id="resumen" class="text-body-secondary">Selecciona cliente y plan.</div><hr class="border-secondary"><p class="small text-body-secondary">El estado inicial será <strong class="text-body">Pendiente</strong>. Después de confirmar serás enviado al pago total; al pagarse quedará activa.</p><div class="form-check"><input class="form-check-input" type="checkbox" name="acepta_contrato" value="1" id="contrato" required @checked(old('acepta_contrato'))><label class="form-check-label text-body" for="contrato">El cliente acepta las condiciones, política de congelación y política de cancelación del contrato de membresía.</label></div></div></div>
+<div class="text-end mt-4"><x-button :href="route('membresias.index')" variant="outline-secondary" class="me-2">Cancelar</x-button><x-button type="submit">Confirmar y enviar a pagar</x-button></div>
+</form></x-card>
+@push('scripts')<script>const cliente=document.getElementById('cliente'),precio=document.getElementById('precio'),inicio=document.getElementById('inicio'),fin=document.getElementById('fin'),resumen=document.getElementById('resumen');function calcular(){const p=precio.selectedOptions[0],dias=Number(p?.dataset.dias||0);document.getElementById('tipo').value=p?.dataset.tipo||'';if(!inicio.value||!dias){fin.value='';return;}const f=new Date(inicio.value+'T12:00:00');f.setDate(f.getDate()+dias-1);fin.value=f.toLocaleDateString('es-HN');resumen.innerHTML=`<strong>${cliente.selectedOptions[0]?.text||'Cliente'}</strong><br>${p.text}<br>Vigencia: ${new Date(inicio.value+'T12:00:00').toLocaleDateString('es-HN')} al ${fin.value}`;}[cliente,precio,inicio].forEach(x=>x.addEventListener('change',calcular));calcular();</script>@endpush
 @endsection

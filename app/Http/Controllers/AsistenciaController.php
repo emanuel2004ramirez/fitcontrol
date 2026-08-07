@@ -2,47 +2,74 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\Asistencia\FilterAsistenciaRequest;
-use App\Http\Requests\Asistencia\RegistrarEntradaRequest;
-use App\Http\Requests\Asistencia\RegistrarSalidaRequest;
+use App\Http\Requests\AsistenciaRequest;
 use App\Services\AsistenciaService;
-use Illuminate\Http\RedirectResponse;
-use Illuminate\View\View;
+use Illuminate\Http\Request;
+use Illuminate\Database\QueryException;
 
 class AsistenciaController extends Controller
 {
-    public function __construct(private readonly AsistenciaService $service) {}
+    public function __construct(private AsistenciaService $asistenciaService) {}
 
-    public function index(FilterAsistenciaRequest $r): View
+    public function index(Request $request)
     {
-        $f = $r->validated();
-        $f['desde'] = now()->startOfDay()->toDateTimeString();
-        $f['hasta'] = now()->endOfDay()->toDateTimeString();
-
-        return view('asistencias.index', ['asistencias' => $this->service->paginar($f, (int) ($f['por_pagina'] ?? 15), (int) ($f['page'] ?? 1)), 'resumen' => $this->service->resumen(), 'filtros' => $f]);
+        $buscar = $request->input('buscar');
+        $porPagina = 15;
+        $pagina = (int) $request->input('page', 1);
+        
+        $filtros = [
+            'texto' => $buscar,
+            'solo_abiertas' => 1,
+        ];
+        
+        $asistencias = $this->asistenciaService->paginar($filtros, $porPagina, $pagina);
+        $clientesElegibles = $this->asistenciaService->clientesAcceso();
+        
+        return view('asistencias.index', compact('asistencias', 'buscar', 'clientesElegibles'));
     }
 
-    public function create(): View
+    public function store(AsistenciaRequest $request)
     {
-        return view('asistencias.create', ['clientes' => $this->service->clientesAcceso()]);
+        try {
+            $parts = explode('-', $request->cliente_membresia);
+            if (count($parts) !== 2) {
+                return back()->withErrors(['error' => 'Formato de cliente/membresía inválido.']);
+            }
+            
+            [$clienteId, $membresiaId] = $parts;
+            
+            $this->asistenciaService->registrarEntrada(
+                (int) $clienteId,
+                (int) $membresiaId,
+                auth()->id(),
+                $request->observaciones
+            );
+            
+            return back()->with('success', 'Entrada registrada exitosamente.');
+        } catch (QueryException $e) {
+            $message = $e->getMessage();
+            if (preg_match('/SQLSTATE\[45000\]:.*?:\s*\d+\s+(.*)/', $message, $matches)) {
+                $message = $matches[1];
+            }
+            return back()->withErrors(['error' => $message]);
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => 'Ocurrió un error al registrar la entrada.']);
+        }
     }
 
-    public function store(RegistrarEntradaRequest $r): RedirectResponse
+    public function update(Request $request, int $id)
     {
-        $this->service->registrarEntrada([...$r->validated(), 'usuario_id' => $r->user()?->getAuthIdentifier()]);
-
-        return redirect()->route('asistencias.index')->with('success', 'Entrada registrada.');
-    }
-
-    public function show(int $asistencia): View
-    {
-        return view('asistencias.show', ['asistencia' => $this->service->obtener($asistencia)]);
-    }
-
-    public function registrarSalida(RegistrarSalidaRequest $r, int $asistencia): RedirectResponse
-    {
-        $this->service->registrarSalida($asistencia, $r->validated('salida_at'), $r->user()?->getAuthIdentifier());
-
-        return back()->with('success', 'Salida registrada.');
+        try {
+            $this->asistenciaService->registrarSalida($id, auth()->id());
+            return back()->with('success', 'Salida registrada exitosamente.');
+        } catch (QueryException $e) {
+            $message = $e->getMessage();
+            if (preg_match('/SQLSTATE\[45000\]:.*?:\s*\d+\s+(.*)/', $message, $matches)) {
+                $message = $matches[1];
+            }
+            return back()->withErrors(['error' => $message]);
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => 'Ocurrió un error al registrar la salida.']);
+        }
     }
 }

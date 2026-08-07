@@ -84,9 +84,12 @@ CREATE PROCEDURE sp_personal_crear(
 )
 BEGIN
     DECLARE v_id BIGINT UNSIGNED;
+    DECLARE v_codigo VARCHAR(30);
     DECLARE EXIT HANDLER FOR SQLEXCEPTION BEGIN ROLLBACK; RESIGNAL; END;
 
-    IF EXISTS (SELECT 1 FROM personal WHERE codigo_empleado = p_codigo) THEN
+    SET v_codigo = NULLIF(TRIM(p_codigo), '');
+
+    IF v_codigo IS NOT NULL AND EXISTS (SELECT 1 FROM personal WHERE codigo_empleado = v_codigo) THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'El código de empleado ya está registrado';
     END IF;
     IF p_correo IS NOT NULL AND EXISTS (SELECT 1 FROM personal WHERE correo_electronico = p_correo) THEN
@@ -103,12 +106,19 @@ BEGIN
     END IF;
 
     START TRANSACTION;
+    IF v_codigo IS NULL THEN
+        SET v_codigo = CONCAT('TMP-', LEFT(REPLACE(UUID(), '-', ''), 26));
+    END IF;
     INSERT INTO personal (codigo_empleado, cargo_id, sexo_id, estado_personal_id, nombre, apellido,
         tipo_identificacion, numero_identificacion, telefono, correo_electronico, fecha_contratacion,
         created_at, updated_at)
-    VALUES (p_codigo, p_cargo_id, p_sexo_id, p_estado_id, p_nombre, p_apellido, p_tipo_id,
+    VALUES (v_codigo, p_cargo_id, p_sexo_id, p_estado_id, p_nombre, p_apellido, p_tipo_id,
         p_numero_id, p_telefono, p_correo, p_fecha_contratacion, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
     SET v_id = LAST_INSERT_ID();
+    IF p_codigo IS NULL OR TRIM(p_codigo) = '' THEN
+        SET v_codigo = CONCAT('EMP-', IF(v_id < 1000000, LPAD(v_id, 6, '0'), v_id));
+        UPDATE personal SET codigo_empleado = v_codigo WHERE id = v_id;
+    END IF;
     INSERT INTO historial_cargos_personal
         (personal_id, cargo_id, vigente_desde, motivo, registrado_por, created_at, updated_at)
     VALUES (v_id, p_cargo_id, p_fecha_contratacion, 'Cargo inicial', p_usuario_id, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
@@ -292,6 +302,86 @@ BEGIN
        SET vigente_hasta = CASE WHEN vigente_desde >= CURRENT_DATE THEN vigente_desde ELSE CURRENT_DATE END,
            updated_at = CURRENT_TIMESTAMP
      WHERE id = p_id;
+END$$
+
+DROP PROCEDURE IF EXISTS sp_personal_evaluacion_desempeno_crear$$
+CREATE PROCEDURE sp_personal_evaluacion_desempeno_crear(
+    IN p_personal_id BIGINT UNSIGNED, IN p_periodo_inicio DATE, IN p_periodo_fin DATE,
+    IN p_fecha_evaluacion DATE, IN p_puntualidad TINYINT UNSIGNED,
+    IN p_responsabilidad TINYINT UNSIGNED, IN p_atencion_cliente TINYINT UNSIGNED,
+    IN p_trabajo_equipo TINYINT UNSIGNED, IN p_rendimiento TINYINT UNSIGNED,
+    IN p_comentarios TEXT, IN p_evaluador_id BIGINT UNSIGNED
+)
+BEGIN
+    DECLARE v_id BIGINT UNSIGNED;
+    DECLARE v_promedio DECIMAL(4,2);
+
+    IF NOT EXISTS (SELECT 1 FROM personal WHERE id = p_personal_id AND deleted_at IS NULL) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'El empleado no existe o fue retirado';
+    END IF;
+    IF p_periodo_fin < p_periodo_inicio THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'El periodo evaluado no es valido';
+    END IF;
+    IF p_fecha_evaluacion > CURRENT_DATE THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'La fecha de evaluacion no puede ser futura';
+    END IF;
+    IF p_puntualidad NOT BETWEEN 1 AND 5 OR p_responsabilidad NOT BETWEEN 1 AND 5
+        OR p_atencion_cliente NOT BETWEEN 1 AND 5 OR p_trabajo_equipo NOT BETWEEN 1 AND 5
+        OR p_rendimiento NOT BETWEEN 1 AND 5 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Las calificaciones deben estar entre 1 y 5';
+    END IF;
+
+    SET v_promedio = ROUND((p_puntualidad + p_responsabilidad + p_atencion_cliente + p_trabajo_equipo + p_rendimiento) / 5, 2);
+
+    INSERT INTO evaluaciones_desempeno_personal
+        (personal_id, evaluador_id, periodo_inicio, periodo_fin, fecha_evaluacion,
+         puntualidad, responsabilidad, atencion_cliente, trabajo_equipo, rendimiento,
+         promedio, estado, comentarios, created_at, updated_at)
+    VALUES
+        (p_personal_id, p_evaluador_id, p_periodo_inicio, p_periodo_fin, p_fecha_evaluacion,
+         p_puntualidad, p_responsabilidad, p_atencion_cliente, p_trabajo_equipo, p_rendimiento,
+         v_promedio, 'pendiente', p_comentarios, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+
+    SET v_id = LAST_INSERT_ID();
+    SELECT e.id, e.personal_id, e.evaluador_id, evaluador.name AS evaluador,
+           e.aprobado_por, aprobador.name AS aprobador, e.periodo_inicio, e.periodo_fin,
+           e.fecha_evaluacion, e.puntualidad, e.responsabilidad, e.atencion_cliente,
+           e.trabajo_equipo, e.rendimiento, e.promedio, e.estado, e.comentarios,
+           e.aprobado_at, e.created_at, e.updated_at
+      FROM evaluaciones_desempeno_personal e
+ LEFT JOIN users evaluador ON evaluador.id = e.evaluador_id
+ LEFT JOIN users aprobador ON aprobador.id = e.aprobado_por
+     WHERE e.id = v_id;
+END$$
+
+DROP PROCEDURE IF EXISTS sp_personal_evaluacion_desempeno_aprobar$$
+CREATE PROCEDURE sp_personal_evaluacion_desempeno_aprobar(
+    IN p_personal_id BIGINT UNSIGNED, IN p_evaluacion_id BIGINT UNSIGNED, IN p_usuario_id BIGINT UNSIGNED
+)
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM evaluaciones_desempeno_personal WHERE id = p_evaluacion_id AND personal_id = p_personal_id) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'La evaluacion no existe para este empleado';
+    END IF;
+
+    UPDATE evaluaciones_desempeno_personal
+       SET estado = 'aprobada', aprobado_por = p_usuario_id, aprobado_at = CURRENT_TIMESTAMP,
+           updated_at = CURRENT_TIMESTAMP
+     WHERE id = p_evaluacion_id AND personal_id = p_personal_id;
+END$$
+
+DROP PROCEDURE IF EXISTS sp_personal_evaluaciones_desempeno$$
+CREATE PROCEDURE sp_personal_evaluaciones_desempeno(IN p_personal_id BIGINT UNSIGNED)
+BEGIN
+    SELECT e.id, e.personal_id, e.evaluador_id, evaluador.name AS evaluador,
+           e.aprobado_por, aprobador.name AS aprobador, e.periodo_inicio, e.periodo_fin,
+           e.fecha_evaluacion, e.puntualidad, e.responsabilidad, e.atencion_cliente,
+           e.trabajo_equipo, e.rendimiento, e.promedio, e.estado, e.comentarios,
+           e.aprobado_at, e.created_at, e.updated_at
+      FROM evaluaciones_desempeno_personal e
+ LEFT JOIN users evaluador ON evaluador.id = e.evaluador_id
+ LEFT JOIN users aprobador ON aprobador.id = e.aprobado_por
+     WHERE e.personal_id = p_personal_id
+  ORDER BY e.fecha_evaluacion DESC, e.id DESC;
 END$$
 
 DELIMITER ;

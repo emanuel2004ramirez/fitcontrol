@@ -15,7 +15,7 @@
 <div class="col-md-6 col-xl-4"><div class="border rounded-3 p-3 h-100"><label class="form-label fw-semibold">{{ $tipo->nombre }} ({{ $tipo->unidad }})</label>
 <input type="hidden" name="medidas[{{ $tipo->id }}][tipo_medida_id]" value="{{ $tipo->id }}">
 <input type="number" class="form-control" name="medidas[{{ $tipo->id }}][valor]" value="{{ old('medidas.'.$tipo->id.'.valor') }}" step="{{ $tipo->decimales > 0 ? '0.'.str_repeat('0',$tipo->decimales-1).'1' : '1' }}" @if($tipo->valor_minimo!==null) min="{{ $tipo->valor_minimo }}" @endif @if($tipo->valor_maximo!==null) max="{{ $tipo->valor_maximo }}" @endif required>
-<input class="form-control form-control-sm mt-2" name="medidas[{{ $tipo->id }}][instrumento]" value="{{ old('medidas.'.$tipo->id.'.instrumento') }}" placeholder="Instrumento (opcional)">
+<input class="form-control form-control-sm mt-2" name="medidas[{{ $tipo->id }}][instrumento]" value="{{ old('medidas.'.$tipo->id.'.instrumento') }}" placeholder="Instrumento" required>
 @if($tipo->valor_minimo!==null || $tipo->valor_maximo!==null)<small class="text-muted">Rango: {{ $tipo->valor_minimo ?? '—' }}–{{ $tipo->valor_maximo ?? '—' }} {{ $tipo->unidad }}</small>@endif
 </div></div>
 @endif @endforeach

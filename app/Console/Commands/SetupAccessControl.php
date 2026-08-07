@@ -16,9 +16,9 @@ class SetupAccessControl extends Command
     private const ROLES = [
         'super-admin' => ['Superadministrador', 'Acceso total al sistema.', ['*']],
         'gerencia' => ['Gerencia', 'Supervisión operativa y reportes.', ['clientes.*', 'personal.*', 'membresias.*', 'pagos.*', 'asistencias.*', 'ejercicios.*', 'rutinas.*', 'evaluaciones.*', 'entrenamientos.*', 'reportes.*', 'auditoria.viewAny', 'auditoria.view']],
-        'recepcion' => ['Recepción', 'Clientes, membresías y control de accesos.', ['clientes.*', 'membresias.*', 'asistencias.*', 'pagos.viewAny', 'pagos.view']],
+        'recepcion' => ['Recepción', 'Clientes, membresías y control de accesos.', ['clientes.viewAny', 'clientes.view', 'clientes.create', 'clientes.update', 'clientes.delete', 'clientes.changeStatus', 'clientes.manage', 'membresias.*', 'asistencias.*', 'pagos.viewAny', 'pagos.view']],
         'caja' => ['Caja', 'Cobros, pagos y consultas comerciales.', ['pagos.*', 'clientes.viewAny', 'clientes.view', 'membresias.viewAny', 'membresias.view']],
-        'entrenador' => ['Entrenador', 'Rutinas, ejercicios, evaluaciones y entrenamientos.', ['clientes.viewAny', 'clientes.view', 'ejercicios.*', 'rutinas.*', 'evaluaciones.*', 'entrenamientos.*', 'asistencias.viewAny', 'asistencias.view', 'asistencias.update']],
+        'entrenador' => ['Entrenador', 'Rutinas, ejercicios, evaluaciones y entrenamientos.', ['clientes.viewAny', 'clientes.view', 'clientes.medical', 'ejercicios.*', 'rutinas.*', 'evaluaciones.*', 'entrenamientos.*', 'asistencias.viewAny', 'asistencias.view', 'asistencias.update']],
     ];
 
     public function handle(UsuarioService $users): int
