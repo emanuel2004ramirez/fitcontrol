@@ -29,7 +29,7 @@ DROP PROCEDURE IF EXISTS sp_membresias_obtener$$
 CREATE PROCEDURE sp_membresias_obtener(IN p_id BIGINT UNSIGNED)
 BEGIN
  IF NOT EXISTS(SELECT 1 FROM membresias WHERE id=p_id AND deleted_at IS NULL) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='La membresía no existe'; END IF;
- SELECT m.*,c.numero_socio,c.correo_electronico,CONCAT(c.nombre,' ',c.apellido) cliente,t.nombre tipo,t.duracion_dias,
+ SELECT m.*,c.numero_socio,c.correo_electronico,CONCAT(c.nombre,' ',c.apellido) cliente,t.codigo tipo_codigo,t.nombre tipo,t.duracion_dias,
  e.codigo estado_codigo,e.nombre estado,e.permite_acceso,e.es_terminal
  FROM membresias m JOIN clientes c ON c.id=m.cliente_id JOIN tipos_membresia t ON t.id=m.tipo_membresia_id
  JOIN estados_membresia e ON e.id=m.estado_membresia_id WHERE m.id=p_id AND m.deleted_at IS NULL;
@@ -50,7 +50,8 @@ BEGIN SELECT * FROM suspensiones_membresia WHERE membresia_id=p_id ORDER BY fech
 DROP PROCEDURE IF EXISTS sp_membresias_clientes_disponibles$$
 CREATE PROCEDURE sp_membresias_clientes_disponibles(IN p_texto VARCHAR(150))
 BEGIN SELECT c.id,c.numero_socio,CONCAT(c.nombre,' ',c.apellido) nombre FROM clientes c
- WHERE c.deleted_at IS NULL AND NOT EXISTS(SELECT 1 FROM membresias m WHERE m.cliente_id=c.id AND m.bloqueo_activa=1 AND m.deleted_at IS NULL)
+ WHERE c.deleted_at IS NULL AND NOT EXISTS(SELECT 1 FROM membresias m JOIN estados_membresia e ON e.id=m.estado_membresia_id WHERE m.cliente_id=c.id AND m.deleted_at IS NULL AND e.es_terminal=0)
+ AND NOT EXISTS(SELECT 1 FROM beneficiarios_membresia b JOIN membresias_familiares f ON f.id=b.membresia_familiar_id JOIN membresias m ON m.id=f.membresia_id JOIN estados_membresia e ON e.id=m.estado_membresia_id WHERE b.cliente_id=c.id AND b.estado='ACTIVO' AND m.bloqueo_activa=1 AND m.deleted_at IS NULL AND e.permite_acceso=1 AND CURRENT_DATE BETWEEN m.fecha_inicio AND m.fecha_fin)
  AND (p_texto IS NULL OR p_texto='' OR c.numero_socio LIKE CONCAT('%',p_texto,'%') OR c.nombre LIKE CONCAT('%',p_texto,'%') OR c.apellido LIKE CONCAT('%',p_texto,'%')) ORDER BY c.apellido,c.nombre LIMIT 200; END$$
 
 DROP PROCEDURE IF EXISTS sp_membresias_precios_disponibles$$
@@ -136,7 +137,7 @@ BEGIN
  SET v_fin=DATE_ADD(p_fecha_inicio,INTERVAL v_dias-1 DAY);
  START TRANSACTION;
  SELECT id INTO v_lock FROM clientes WHERE id=p_cliente_id FOR UPDATE;
- IF EXISTS(SELECT 1 FROM membresias WHERE cliente_id=p_cliente_id AND bloqueo_activa=1 AND deleted_at IS NULL) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='El cliente ya posee una membresía activa'; END IF;
+ IF EXISTS(SELECT 1 FROM membresias m JOIN estados_membresia e ON e.id=m.estado_membresia_id WHERE m.cliente_id=p_cliente_id AND m.deleted_at IS NULL AND e.es_terminal=0) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='El cliente ya posee una membresía vigente, pendiente o programada'; END IF;
  INSERT INTO membresias(cliente_id,tipo_membresia_id,precio_membresia_id,estado_membresia_id,membresia_anterior_id,fecha_inicio,fecha_fin,precio_contratado,moneda,bloqueo_activa,origen,creada_por,created_at,updated_at) VALUES(p_cliente_id,p_tipo_id,p_precio_id,p_estado_id,p_anterior_id,p_fecha_inicio,v_fin,v_precio,v_moneda,1,COALESCE(p_origen,'NUEVA'),p_usuario_id,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
  SET v_id=LAST_INSERT_ID();
  INSERT INTO historial_estados_membresia(membresia_id,estado_nuevo_id,motivo,cambiado_por,cambiado_at,created_at,updated_at) VALUES(v_id,p_estado_id,'Alta de membresía',p_usuario_id,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
@@ -155,7 +156,7 @@ BEGIN
  SELECT p.precio,p.moneda,t.duracion_dias,t.nombre INTO v_precio,v_moneda,v_dias,v_plan FROM precios_membresia p JOIN tipos_membresia t ON t.id=p.tipo_membresia_id WHERE p.id=v_precio_id AND p.tipo_membresia_id=v_tipo AND p.vigente_desde<=v_inicio AND (p.vigente_hasta IS NULL OR p.vigente_hasta>=v_inicio) AND t.activo=1;
  SELECT CONCAT(nombre,' ',apellido),CONCAT_WS(' ',tipo_identificacion,numero_identificacion) INTO v_nombre,v_identificacion FROM clientes WHERE id=v_cliente AND deleted_at IS NULL;
  IF v_estado IS NULL OR v_precio IS NULL OR v_nombre IS NULL THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Cliente, plan o precio no válido'; END IF;
- IF EXISTS(SELECT 1 FROM membresias m JOIN estados_membresia e ON e.id=m.estado_membresia_id WHERE m.cliente_id=v_cliente AND m.deleted_at IS NULL AND e.codigo IN('PENDIENTE','ACTIVA')) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='El cliente ya tiene una membresía pendiente o activa'; END IF;
+ IF EXISTS(SELECT 1 FROM membresias m JOIN estados_membresia e ON e.id=m.estado_membresia_id WHERE m.cliente_id=v_cliente AND m.deleted_at IS NULL AND e.es_terminal=0) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='El cliente ya tiene una membresía vigente, pendiente, programada o congelada'; END IF;
  SET v_fin=DATE_ADD(v_inicio,INTERVAL v_dias-1 DAY);
  START TRANSACTION;
  INSERT INTO membresias(cliente_id,tipo_membresia_id,precio_membresia_id,estado_membresia_id,fecha_inicio,fecha_fin,precio_contratado,moneda,bloqueo_activa,origen,creada_por,created_at,updated_at) VALUES(v_cliente,v_tipo,v_precio_id,v_estado,v_inicio,v_fin,v_precio,v_moneda,NULL,'NUEVA',p_usuario_id,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP); SET v_id=LAST_INSERT_ID();
@@ -183,7 +184,12 @@ BEGIN
 END$$
 
 DROP PROCEDURE IF EXISTS sp_membresias_contrato$$
-CREATE PROCEDURE sp_membresias_contrato(IN p_membresia_id BIGINT UNSIGNED) BEGIN SELECT * FROM contratos_membresia WHERE membresia_id=p_membresia_id; END$$
+CREATE PROCEDURE sp_membresias_contrato(IN p_membresia_id BIGINT UNSIGNED)
+BEGIN
+ SELECT c.*,u.name registrado_por_nombre
+ FROM contratos_membresia c LEFT JOIN users u ON u.id=c.registrado_por
+ WHERE c.membresia_id=p_membresia_id;
+END$$
 DROP PROCEDURE IF EXISTS sp_membresias_categorias_cancelacion$$
 CREATE PROCEDURE sp_membresias_categorias_cancelacion() BEGIN SELECT id,codigo,nombre FROM categorias_cancelacion_membresia WHERE activo=1 ORDER BY orden,nombre; END$$
 
@@ -206,10 +212,34 @@ CREATE PROCEDURE sp_membresias_familia_obtener(IN p_membresia_id BIGINT UNSIGNED
 DROP PROCEDURE IF EXISTS sp_membresias_familia_beneficiarios$$
 CREATE PROCEDURE sp_membresias_familia_beneficiarios(IN p_membresia_id BIGINT UNSIGNED) BEGIN SELECT b.*,c.numero_socio,CONCAT(c.nombre,' ',c.apellido) cliente FROM beneficiarios_membresia b JOIN membresias_familiares f ON f.id=b.membresia_familiar_id JOIN clientes c ON c.id=b.cliente_id WHERE f.membresia_id=p_membresia_id ORDER BY b.fecha_incorporacion,b.id; END$$
 DROP PROCEDURE IF EXISTS sp_membresias_familia_configurar$$
-CREATE PROCEDURE sp_membresias_familia_configurar(IN p_membresia_id BIGINT UNSIGNED,IN p_titular BIGINT UNSIGNED,IN p_responsable BIGINT UNSIGNED,IN p_limite SMALLINT UNSIGNED) BEGIN IF p_limite<1 OR p_limite>20 THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='El límite familiar debe estar entre 1 y 20'; END IF; INSERT INTO membresias_familiares(membresia_id,titular_cliente_id,responsable_pago_cliente_id,limite_beneficiarios,created_at,updated_at) VALUES(p_membresia_id,p_titular,p_responsable,p_limite,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE titular_cliente_id=p_titular,responsable_pago_cliente_id=p_responsable,limite_beneficiarios=p_limite,updated_at=CURRENT_TIMESTAMP; END$$
+CREATE PROCEDURE sp_membresias_familia_configurar(IN p_membresia_id BIGINT UNSIGNED,IN p_titular BIGINT UNSIGNED,IN p_responsable BIGINT UNSIGNED,IN p_limite SMALLINT UNSIGNED)
+BEGIN
+ DECLARE v_titular BIGINT UNSIGNED; DECLARE v_tipo VARCHAR(40); DECLARE v_limite SMALLINT UNSIGNED;
+ SELECT m.cliente_id,t.codigo INTO v_titular,v_tipo FROM membresias m JOIN tipos_membresia t ON t.id=m.tipo_membresia_id WHERE m.id=p_membresia_id AND m.deleted_at IS NULL;
+ IF v_titular IS NULL THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='La membresía no existe'; END IF;
+ IF v_tipo NOT IN('PAREJA','FAMILIAR') THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='El plan seleccionado no admite beneficiarios'; END IF;
+ IF p_titular<>v_titular THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='El titular debe ser el propietario de la membresía'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM clientes WHERE id=p_responsable AND deleted_at IS NULL) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='El responsable del pago no existe'; END IF;
+ SET v_limite=IF(v_tipo='PAREJA',1,3);
+ INSERT INTO membresias_familiares(membresia_id,titular_cliente_id,responsable_pago_cliente_id,limite_beneficiarios,created_at,updated_at)
+ VALUES(p_membresia_id,v_titular,p_responsable,v_limite,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
+ ON DUPLICATE KEY UPDATE titular_cliente_id=v_titular,responsable_pago_cliente_id=p_responsable,limite_beneficiarios=v_limite,updated_at=CURRENT_TIMESTAMP;
+END$$
 DROP PROCEDURE IF EXISTS sp_membresias_familia_agregar$$
 CREATE PROCEDURE sp_membresias_familia_agregar(IN p_membresia_id BIGINT UNSIGNED,IN p_cliente_id BIGINT UNSIGNED,IN p_parentesco VARCHAR(60),IN p_usuario_id BIGINT UNSIGNED)
-BEGIN DECLARE v_familia BIGINT UNSIGNED; DECLARE v_limite INT; DECLARE v_cliente_titular BIGINT UNSIGNED; SELECT id,limite_beneficiarios,titular_cliente_id INTO v_familia,v_limite,v_cliente_titular FROM membresias_familiares WHERE membresia_id=p_membresia_id; IF v_familia IS NULL THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Primero configure la membresía familiar'; END IF; IF p_cliente_id=v_cliente_titular THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='El titular no debe repetirse como beneficiario'; END IF; IF (SELECT COUNT(*) FROM beneficiarios_membresia WHERE membresia_familiar_id=v_familia AND estado='ACTIVO')>=v_limite THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Se alcanzó el límite de beneficiarios'; END IF; INSERT INTO beneficiarios_membresia(membresia_familiar_id,cliente_id,parentesco,estado,fecha_incorporacion,registrado_por,created_at,updated_at) VALUES(v_familia,p_cliente_id,TRIM(p_parentesco),'ACTIVO',CURRENT_DATE,p_usuario_id,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP); END$$
+BEGIN
+ DECLARE v_familia BIGINT UNSIGNED; DECLARE v_limite INT; DECLARE v_cliente_titular BIGINT UNSIGNED;
+ SELECT id,limite_beneficiarios,titular_cliente_id INTO v_familia,v_limite,v_cliente_titular FROM membresias_familiares WHERE membresia_id=p_membresia_id;
+ IF v_familia IS NULL THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Primero configure el grupo de la membresía'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM clientes WHERE id=p_cliente_id AND deleted_at IS NULL) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='El beneficiario seleccionado no existe'; END IF;
+ IF p_cliente_id=v_cliente_titular THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='El titular no debe repetirse como beneficiario'; END IF;
+ IF EXISTS(SELECT 1 FROM membresias m JOIN estados_membresia e ON e.id=m.estado_membresia_id WHERE m.cliente_id=p_cliente_id AND m.bloqueo_activa=1 AND m.deleted_at IS NULL AND e.permite_acceso=1 AND CURRENT_DATE BETWEEN m.fecha_inicio AND m.fecha_fin) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='El cliente ya posee una membresía individual vigente'; END IF;
+ IF EXISTS(SELECT 1 FROM beneficiarios_membresia b JOIN membresias_familiares f ON f.id=b.membresia_familiar_id JOIN membresias m ON m.id=f.membresia_id JOIN estados_membresia e ON e.id=m.estado_membresia_id WHERE b.cliente_id=p_cliente_id AND b.estado='ACTIVO' AND f.id<>v_familia AND m.bloqueo_activa=1 AND m.deleted_at IS NULL AND e.permite_acceso=1 AND CURRENT_DATE BETWEEN m.fecha_inicio AND m.fecha_fin) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='El cliente ya pertenece a otra membresía grupal vigente'; END IF;
+ IF (SELECT COUNT(*) FROM beneficiarios_membresia WHERE membresia_familiar_id=v_familia AND estado='ACTIVO')>=v_limite THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Se alcanzó el límite de beneficiarios del plan'; END IF;
+ INSERT INTO beneficiarios_membresia(membresia_familiar_id,cliente_id,parentesco,estado,fecha_incorporacion,fecha_retiro,motivo_retiro,registrado_por,created_at,updated_at)
+ VALUES(v_familia,p_cliente_id,TRIM(p_parentesco),'ACTIVO',CURRENT_DATE,NULL,NULL,p_usuario_id,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
+ ON DUPLICATE KEY UPDATE parentesco=VALUES(parentesco),estado='ACTIVO',fecha_incorporacion=CURRENT_DATE,fecha_retiro=NULL,motivo_retiro=NULL,registrado_por=p_usuario_id,updated_at=CURRENT_TIMESTAMP;
+END$$
 DROP PROCEDURE IF EXISTS sp_membresias_familia_retirar$$
 CREATE PROCEDURE sp_membresias_familia_retirar(IN p_beneficiario_id BIGINT UNSIGNED,IN p_motivo VARCHAR(255)) BEGIN UPDATE beneficiarios_membresia SET estado='RETIRADO',fecha_retiro=CURRENT_DATE,motivo_retiro=p_motivo,updated_at=CURRENT_TIMESTAMP WHERE id=p_beneficiario_id AND estado='ACTIVO'; IF ROW_COUNT()=0 THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='El beneficiario no está activo'; END IF; END$$
 

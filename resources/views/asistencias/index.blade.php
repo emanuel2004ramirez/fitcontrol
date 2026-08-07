@@ -114,7 +114,7 @@
                             <option value="">Seleccione un cliente...</option>
                             @foreach($clientesElegibles as $ce)
                                 <option value="{{ $ce->id }}-{{ $ce->membresia_id }}">
-                                    {{ $ce->numero_socio }} - {{ $ce->nombre }} ({{ $ce->membresia }})
+                                    {{ $ce->numero_socio }} - {{ $ce->nombre }} ({{ $ce->membresia }})@if(($ce->tipo_acceso ?? '') === 'BENEFICIARIO') · Beneficiario de {{ $ce->titular }}@endif
                                 </option>
                             @endforeach
                         </select>

@@ -123,7 +123,7 @@ class MembresiaService extends StoredProcedureService
 
     public function configurarFamilia(int $membresiaId, array $data): bool
     {
-        return $this->statement('sp_membresias_familia_configurar', [$membresiaId, $data['titular_cliente_id'], $data['responsable_pago_cliente_id'], $data['limite_beneficiarios']]);
+        return $this->statement('sp_membresias_familia_configurar', [$membresiaId, $data['titular_cliente_id'], $data['responsable_pago_cliente_id'], null]);
     }
 
     public function agregarBeneficiario(int $membresiaId, array $data, ?int $usuarioId): bool

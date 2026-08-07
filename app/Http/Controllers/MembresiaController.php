@@ -39,7 +39,7 @@ class MembresiaController extends Controller
         $m=$this->service->crearConContrato($request->validated(),$request->user()?->getAuthIdentifier(),$request->ip());
         $contrato=$this->service->contrato((int)$m->id);
         if($m->correo_electronico){$this->correo->enviar($m->correo_electronico,'Contrato de membresía','Tu membresía fue creada y se encuentra pendiente del pago total.',$m,$contrato);}
-        return redirect()->route('pagos.create',['membresia'=>$m->id])->with('success','Membresía y contrato creados. Continúa con el pago total.');
+        return redirect()->route('membresias.show',$m->id)->with('success','Membresía y contrato creados. Revisa el detalle antes de registrar el pago.');
     }
 
     public function show(int $membresia): View
@@ -60,7 +60,7 @@ class MembresiaController extends Controller
 
     public function renovar(RenovarMembresiaRequest $request,int $membresia): RedirectResponse
     {
-        $n=$this->service->renovarRapida($membresia,$request->validated(),$request->user()?->getAuthIdentifier(),$request->ip());return redirect()->route('pagos.create',['membresia'=>$n->id])->with('success','Renovación creada. Continúa con el pago.');
+        $n=$this->service->renovarRapida($membresia,$request->validated(),$request->user()?->getAuthIdentifier(),$request->ip());return redirect()->route('membresias.show',$n->id)->with('success','Renovación creada. Revisa el detalle antes de registrar el pago.');
     }
 
     public function congelar(CongelarMembresiaRequest $request,int $membresia): RedirectResponse
@@ -75,7 +75,15 @@ class MembresiaController extends Controller
 
     public function contratoPdf(int $membresia): Response
     {
-        return Pdf::loadView('membresias.contrato-pdf',['contrato'=>$this->service->contrato($membresia)])->download("contrato-membresia-{$membresia}.pdf");
+        $contrato=$this->service->contrato($membresia);
+        abort_if($contrato===null,404,'El contrato no existe.');
+
+        return Pdf::loadView('membresias.contrato-pdf',[
+            'contrato'=>$contrato,
+            'membresia'=>$this->service->obtener($membresia),
+            'familia'=>$this->service->familia($membresia),
+            'beneficiarios'=>$this->service->beneficiarios($membresia),
+        ])->setPaper('a4')->download("contrato-{$contrato->numero_contrato}.pdf");
     }
 
     public function configurarFamilia(ConfigurarFamiliaRequest $request,int $membresia): RedirectResponse

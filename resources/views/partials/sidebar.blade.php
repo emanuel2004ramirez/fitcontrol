@@ -32,8 +32,7 @@
 <aside class="app-sidebar" id="appSidebar" aria-label="Navegación principal">
     <div class="sidebar-brand">
         <a href="{{ route('dashboard') }}" class="brand-link">
-            <span class="brand-mark"><i class="bi bi-heart-pulse-fill"></i></span>
-            <span><strong>Fit</strong>Control</span>
+            <img src="{{ asset('images/image.svg') }}" alt="FitControl" class="fitcontrol-logo sidebar-logo">
         </a>
         <button type="button" class="btn sidebar-close d-lg-none" data-sidebar-close aria-label="Cerrar menú"><i class="bi bi-x-lg"></i></button>
     </div>
