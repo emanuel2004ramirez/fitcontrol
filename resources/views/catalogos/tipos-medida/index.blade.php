@@ -4,7 +4,7 @@
 @section('content')
 
 <x-page-header title="Tipos de Medida" subtitle="Catálogo de tipos de medida del sistema.">
-    <x-button data-bs-toggle="modal" data-bs-target="#modalCrear" icon="bi-plus-lg">Nuevo Tipo de Medida</x-button>
+    <x-button data-bs-toggle="modal" data-bs-target="#modalCrear" icon="bi-plus-lg">Nuevo tipo de medida</x-button>
 </x-page-header>
 
 <x-card title="Filtros" class="mb-4">
@@ -112,7 +112,7 @@
                                     </div>
                                     <div class="modal-footer">
                                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                                        <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                                        <button type="submit" class="btn btn-primary">Guardar cambios</button>
                                     </div>
                                 </form>
                             </div>
@@ -137,7 +137,7 @@
             <form action="{{ route('catalogos.tipos-medida.store') }}" method="POST">
                 @csrf
                 <div class="modal-header">
-                    <h5 class="modal-title">Nuevo Tipo de Medida</h5>
+                    <h5 class="modal-title">Nuevo tipo de medida</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
                 <div class="modal-body text-start">

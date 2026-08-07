@@ -9,10 +9,26 @@ return new class extends Migration
 {
     public function up(): void
     {
-        DB::statement('ALTER TABLE series_realizadas DROP CONSTRAINT chk_serie_rpe');
+        $this->dropConstraintIfExists('series_realizadas', 'chk_serie_rpe');
+
         Schema::table('series_realizadas', function (Blueprint $table) {
-            $table->dropColumn('rpe');
+            if (Schema::hasColumn('series_realizadas', 'rpe')) {
+                $table->dropColumn('rpe');
+            }
         });
+    }
+
+    protected function dropConstraintIfExists(string $table, string $constraint): void
+    {
+        $database = DB::getDatabaseName();
+        $exists = DB::selectOne(
+            'SELECT 1 FROM information_schema.table_constraints WHERE constraint_schema = ? AND table_name = ? AND constraint_name = ?',
+            [$database, $table, $constraint]
+        );
+
+        if ($exists) {
+            DB::statement("ALTER TABLE {$table} DROP CONSTRAINT {$constraint}");
+        }
     }
 
     public function down(): void

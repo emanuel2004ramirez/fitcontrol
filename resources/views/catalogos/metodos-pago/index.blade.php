@@ -4,7 +4,7 @@
 @section('content')
 
 <x-page-header title="Métodos de Pago" subtitle="Catálogo de métodos de pago del sistema.">
-    <x-button data-bs-toggle="modal" data-bs-target="#modalCrear" icon="bi-plus-lg">Nuevo Método</x-button>
+    <x-button data-bs-toggle="modal" data-bs-target="#modalCrear" icon="bi-plus-lg">Nuevo método</x-button>
 </x-page-header>
 
 <x-card title="Filtros" class="mb-4">
@@ -96,7 +96,7 @@
                                     </div>
                                     <div class="modal-footer">
                                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                                        <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                                        <button type="submit" class="btn btn-primary">Guardar cambios</button>
                                     </div>
                                 </form>
                             </div>
@@ -121,7 +121,7 @@
             <form action="{{ route('catalogos.metodos-pago.store') }}" method="POST">
                 @csrf
                 <div class="modal-header">
-                    <h5 class="modal-title">Nuevo Método de Pago</h5>
+                    <h5 class="modal-title">Nuevo método de pago</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
                 <div class="modal-body text-start">

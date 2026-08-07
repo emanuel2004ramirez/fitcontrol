@@ -42,18 +42,39 @@ DROP PROCEDURE IF EXISTS sp_evaluaciones_crear_completa$$
 CREATE PROCEDURE sp_evaluaciones_crear_completa(IN p_cliente_id BIGINT UNSIGNED,IN p_evaluador_id BIGINT UNSIGNED,IN p_fecha DATETIME,IN p_metodo VARCHAR(100),IN p_observaciones TEXT,IN p_usuario_id BIGINT UNSIGNED,IN p_medidas JSON)
 BEGIN
  DECLARE v_id BIGINT UNSIGNED;
+ DECLARE v_index INT DEFAULT 0;
+ DECLARE v_len INT DEFAULT 0;
+ DECLARE v_tipo_id BIGINT UNSIGNED;
+ DECLARE v_valor DECIMAL(12,4);
+ DECLARE v_instrumento VARCHAR(100);
  DECLARE EXIT HANDLER FOR SQLEXCEPTION BEGIN ROLLBACK;RESIGNAL;END;
  IF NOT EXISTS(SELECT 1 FROM clientes WHERE id=p_cliente_id AND deleted_at IS NULL) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='El cliente no existe';END IF;
  IF NOT EXISTS(SELECT 1 FROM personal WHERE id=p_evaluador_id AND deleted_at IS NULL) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='El evaluador no está disponible';END IF;
  IF p_fecha>CURRENT_TIMESTAMP THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='La fecha de evaluación no puede ser futura';END IF;
  IF p_metodo IS NULL OR TRIM(p_metodo)='' THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='El método de evaluación es obligatorio';END IF;
  IF p_medidas IS NULL OR JSON_LENGTH(p_medidas)=0 THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Debe registrar al menos una medida';END IF;
- IF EXISTS(SELECT 1 FROM JSON_TABLE(p_medidas,'$[*]' COLUMNS(tipo_id BIGINT PATH '$.tipo_medida_id',valor DECIMAL(12,4) PATH '$.valor')) j LEFT JOIN tipos_medida t ON t.id=j.tipo_id AND t.activo=1 WHERE t.id IS NULL OR (t.valor_minimo IS NOT NULL AND j.valor<t.valor_minimo) OR (t.valor_maximo IS NOT NULL AND j.valor>t.valor_maximo)) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Una o más medidas son inválidas o están fuera del rango permitido';END IF;
+ DROP TEMPORARY TABLE IF EXISTS tmp_evaluaciones_medidas;
+ CREATE TEMPORARY TABLE tmp_evaluaciones_medidas (
+   tipo_id BIGINT UNSIGNED NOT NULL,
+   valor DECIMAL(12,4) NOT NULL,
+   instrumento VARCHAR(100) NULL,
+   pos INT UNSIGNED NOT NULL,
+   PRIMARY KEY (pos)
+ ) ENGINE=Memory;
+ SET v_len = JSON_LENGTH(p_medidas);
+ WHILE v_index < v_len DO
+   SET v_tipo_id = CAST(JSON_EXTRACT(JSON_EXTRACT(p_medidas, CONCAT('$[', v_index, ']')), '$.tipo_medida_id') AS UNSIGNED);
+   SET v_valor = CAST(JSON_EXTRACT(JSON_EXTRACT(p_medidas, CONCAT('$[', v_index, ']')), '$.valor') AS DECIMAL(12,4));
+   SET v_instrumento = NULLIF(TRIM(CAST(JSON_EXTRACT(JSON_EXTRACT(p_medidas, CONCAT('$[', v_index, ']')), '$.instrumento') AS CHAR)), '');
+   INSERT INTO tmp_evaluaciones_medidas (tipo_id, valor, instrumento, pos) VALUES (v_tipo_id, v_valor, v_instrumento, v_index + 1);
+   SET v_index = v_index + 1;
+ END WHILE;
+ IF EXISTS(SELECT 1 FROM tmp_evaluaciones_medidas j LEFT JOIN tipos_medida t ON t.id=j.tipo_id AND t.activo=1 WHERE t.id IS NULL OR (t.valor_minimo IS NOT NULL AND j.valor<t.valor_minimo) OR (t.valor_maximo IS NOT NULL AND j.valor>t.valor_maximo)) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Una o más medidas son inválidas o están fuera del rango permitido';END IF;
  START TRANSACTION;
  INSERT INTO evaluaciones_fisicas(cliente_id,evaluador_id,evaluada_at,metodo,observaciones,creada_por,created_at,updated_at) VALUES(p_cliente_id,p_evaluador_id,p_fecha,TRIM(p_metodo),p_observaciones,p_usuario_id,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
  SET v_id=LAST_INSERT_ID();
  INSERT INTO detalles_evaluacion(evaluacion_fisica_id,tipo_medida_id,valor,unidad_snapshot,instrumento,created_at,updated_at)
- SELECT v_id,j.tipo_id,j.valor,t.unidad,NULLIF(TRIM(j.instrumento),''),CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM JSON_TABLE(p_medidas,'$[*]' COLUMNS(tipo_id BIGINT PATH '$.tipo_medida_id',valor DECIMAL(12,4) PATH '$.valor',instrumento VARCHAR(100) PATH '$.instrumento' NULL ON EMPTY)) j JOIN tipos_medida t ON t.id=j.tipo_id AND t.activo=1;
+ SELECT v_id,j.tipo_id,j.valor,t.unidad,j.instrumento,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM tmp_evaluaciones_medidas j JOIN tipos_medida t ON t.id=j.tipo_id AND t.activo=1;
  COMMIT;
  SELECT * FROM evaluaciones_fisicas WHERE id=v_id;
 END$$

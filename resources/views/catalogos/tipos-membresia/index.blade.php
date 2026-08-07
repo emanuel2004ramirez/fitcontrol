@@ -4,7 +4,7 @@
 @section('content')
 
 <x-page-header title="Tipos de Membresía" subtitle="Catálogo de tipos y precios de membresía del sistema.">
-    <x-button data-bs-toggle="modal" data-bs-target="#modalCrear" icon="bi-plus-lg">Nuevo Tipo de Membresía</x-button>
+    <x-button data-bs-toggle="modal" data-bs-target="#modalCrear" icon="bi-plus-lg">Nuevo tipo de membresía</x-button>
 </x-page-header>
 
 <x-card title="Filtros" class="mb-4">
@@ -114,7 +114,7 @@
                                     </div>
                                     <div class="modal-footer">
                                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                                        <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                                        <button type="submit" class="btn btn-primary">Guardar cambios</button>
                                     </div>
                                 </form>
                             </div>
@@ -139,7 +139,7 @@
             <form action="{{ route('catalogos.tipos-membresia.store') }}" method="POST">
                 @csrf
                 <div class="modal-header">
-                    <h5 class="modal-title">Nuevo Tipo de Membresía</h5>
+                    <h5 class="modal-title">Nuevo tipo de membresía</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
                 <div class="modal-body text-start">

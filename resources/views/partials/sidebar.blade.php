@@ -20,7 +20,7 @@
         ['label' => 'Sexos', 'route' => 'catalogos.sexos.index'],
         ['label' => 'Estados de clientes', 'route' => 'catalogos.estados-cliente.index'],
         ['label' => 'Estados de membresías', 'route' => 'catalogos.estados-membresias.index'],
-        ['label' => 'Estados de cobro/pago', 'route' => 'catalogos.estados-pagos.index'],
+        ['label' => 'Estados de cobro y pago', 'route' => 'catalogos.estados-pagos.index'],
         ['label' => 'Métodos de pago', 'route' => 'catalogos.metodos-pago.index'],
         ['label' => 'Cargos del personal', 'route' => 'catalogos.cargos-personal.index'],
         ['label' => 'Grupos musculares', 'route' => 'catalogos.grupos-musculares.index'],

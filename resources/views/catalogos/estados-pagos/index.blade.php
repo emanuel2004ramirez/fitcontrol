@@ -3,8 +3,8 @@
 @php($breadcrumbs = [['label' => 'Catálogos'], ['label' => 'Estados de Pago']])
 @section('content')
 
-<x-page-header title="Estados de Pago" subtitle="Catálogo de estados de pago del sistema.">
-    <x-button data-bs-toggle="modal" data-bs-target="#modalCrear" icon="bi-plus-lg">Nuevo Estado</x-button>
+<x-page-header title="Estados de pago" subtitle="Catálogo de estados de pago del sistema.">
+    <x-button data-bs-toggle="modal" data-bs-target="#modalCrear" icon="bi-plus-lg">Nuevo estado</x-button>
 </x-page-header>
 
 <x-card title="Filtros" class="mb-4">
@@ -67,7 +67,7 @@
                                     @csrf
                                     @method('PUT')
                                     <div class="modal-header">
-                                        <h5 class="modal-title">Editar Estado de Pago</h5>
+                                        <h5 class="modal-title">Editar estado de pago</h5>
                                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                                     </div>
                                     <div class="modal-body text-start">
@@ -85,12 +85,12 @@
                                         </div>
                                         <div class="form-check form-switch text-start">
                                             <input class="form-check-input" type="checkbox" name="es_terminal" id="es_terminal{{ $estado->id }}" value="1" @checked($estado->es_terminal)>
-                                            <label class="form-check-label" for="es_terminal{{ $estado->id }}">Es Terminal</label>
+                                            <label class="form-check-label" for="es_terminal{{ $estado->id }}">Es terminal</label>
                                         </div>
                                     </div>
                                     <div class="modal-footer">
                                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                                        <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                                        <button type="submit" class="btn btn-primary">Guardar cambios</button>
                                     </div>
                                 </form>
                             </div>
@@ -115,7 +115,7 @@
             <form action="{{ route('catalogos.estados-pagos.store') }}" method="POST">
                 @csrf
                 <div class="modal-header">
-                    <h5 class="modal-title">Nuevo Estado de Pago</h5>
+                    <h5 class="modal-title">Nuevo estado de pago</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
                 <div class="modal-body text-start">
@@ -133,7 +133,7 @@
                     </div>
                     <div class="form-check form-switch text-start">
                         <input class="form-check-input" type="checkbox" name="es_terminal" id="es_terminalNuevo" value="1">
-                        <label class="form-check-label" for="es_terminalNuevo">Es Terminal</label>
+                        <label class="form-check-label" for="es_terminalNuevo">Es terminal</label>
                     </div>
                 </div>
                 <div class="modal-footer">

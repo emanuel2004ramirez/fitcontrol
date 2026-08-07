@@ -81,5 +81,43 @@ END$$
 DROP PROCEDURE IF EXISTS sp_rutinas_actualizar_ejercicio$$
 CREATE PROCEDURE sp_rutinas_actualizar_ejercicio(IN p_id BIGINT UNSIGNED,IN p_series SMALLINT UNSIGNED,IN p_rep_min SMALLINT UNSIGNED,IN p_rep_max SMALLINT UNSIGNED,IN p_peso DECIMAL(8,2),IN p_descanso SMALLINT UNSIGNED,IN p_indicaciones TEXT) BEGIN UPDATE ejercicios_rutina er JOIN sesiones_rutina s ON s.id=er.sesion_rutina_id JOIN versiones_rutina v ON v.id=s.version_rutina_id SET er.series=p_series,er.repeticiones_min=p_rep_min,er.repeticiones_max=p_rep_max,er.peso=p_peso,er.descanso_segundos=p_descanso,er.indicaciones=NULLIF(TRIM(p_indicaciones),''),er.updated_at=CURRENT_TIMESTAMP WHERE er.id=p_id AND v.publicada_at IS NULL; IF ROW_COUNT()=0 THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='El ejercicio no puede editarse'; END IF; END$$
 DROP PROCEDURE IF EXISTS sp_rutinas_reordenar_ejercicios$$
-CREATE PROCEDURE sp_rutinas_reordenar_ejercicios(IN p_ids JSON) BEGIN DECLARE v_sesion BIGINT UNSIGNED; SELECT er.sesion_rutina_id INTO v_sesion FROM ejercicios_rutina er JOIN sesiones_rutina s ON s.id=er.sesion_rutina_id JOIN versiones_rutina v ON v.id=s.version_rutina_id JOIN JSON_TABLE(p_ids,'$[*]' COLUMNS(id BIGINT PATH '$')) j ON j.id=er.id WHERE v.publicada_at IS NULL LIMIT 1; IF v_sesion IS NULL THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Los ejercicios no pueden reordenarse'; END IF; UPDATE ejercicios_rutina SET orden=orden+10000 WHERE sesion_rutina_id=v_sesion; UPDATE ejercicios_rutina er JOIN JSON_TABLE(p_ids,'$[*]' COLUMNS(pos FOR ORDINALITY,id BIGINT PATH '$')) j ON j.id=er.id SET er.orden=j.pos WHERE er.sesion_rutina_id=v_sesion; END$$
+CREATE PROCEDURE sp_rutinas_reordenar_ejercicios(IN p_ids JSON)
+BEGIN
+ DECLARE v_sesion BIGINT UNSIGNED;
+ DECLARE v_index INT DEFAULT 0;
+ DECLARE v_len INT DEFAULT 0;
+ DECLARE v_id BIGINT UNSIGNED;
+
+ DROP TEMPORARY TABLE IF EXISTS tmp_rutinas_reordenar;
+ CREATE TEMPORARY TABLE tmp_rutinas_reordenar (
+   id BIGINT UNSIGNED NOT NULL,
+   pos INT UNSIGNED NOT NULL,
+   PRIMARY KEY (id)
+ ) ENGINE=Memory;
+
+ SET v_len = JSON_LENGTH(p_ids);
+ WHILE v_index < v_len DO
+   SET v_id = CAST(JSON_EXTRACT(p_ids, CONCAT('$[', v_index, ']')) AS UNSIGNED);
+   INSERT INTO tmp_rutinas_reordenar (id, pos) VALUES (v_id, v_index + 1);
+   SET v_index = v_index + 1;
+ END WHILE;
+
+ SELECT er.sesion_rutina_id INTO v_sesion
+ FROM ejercicios_rutina er
+ JOIN sesiones_rutina s ON s.id=er.sesion_rutina_id
+ JOIN versiones_rutina v ON v.id=s.version_rutina_id
+ JOIN tmp_rutinas_reordenar t ON t.id=er.id
+ WHERE v.publicada_at IS NULL
+ LIMIT 1;
+
+ IF v_sesion IS NULL THEN
+   SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Los ejercicios no pueden reordenarse';
+ END IF;
+
+ UPDATE ejercicios_rutina SET orden=orden+10000 WHERE sesion_rutina_id=v_sesion;
+ UPDATE ejercicios_rutina er
+ JOIN tmp_rutinas_reordenar t ON t.id=er.id
+ SET er.orden=t.pos
+ WHERE er.sesion_rutina_id=v_sesion;
+END$$
 DELIMITER ;
